@@ -3,7 +3,7 @@ name: Telegram Notification
 on:
   push:
     branches:
-      - master  # <--- Changed 'main' to 'master' here!
+      - master
   release:
     types: [published]
 
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Send Telegram Message
+      - name: Send Telegram Message to CLI Topic
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -28,3 +28,4 @@ jobs:
             🔗 Repository: https://github.com/${{ github.repository }}
             ${{ github.event_name == 'push' && format('🔗 Commit Link: {0}', github.event.head_commit.url) }}
             ${{ github.event_name == 'release' && format('🔗 Release Link: {0}', github.event.release.html_url) }}
+          args: '--message_thread_id ${{ secrets.TELEGRAM_CLI_TOPIC_THREAD_ID }}' # Add this line
