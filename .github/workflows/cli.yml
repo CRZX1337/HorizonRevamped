@@ -1,37 +1,30 @@
-name: Notify Telegram on Push or Release
+name: Telegram Notification
 
 on:
   push:
+    branches:
+      - main # or your main branch name (e.g., master)
   release:
     types: [published]
 
 jobs:
-  notify:
+  telegram_notification:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository (to get commit info)
-        uses: actions/checkout@v3
+      - name: Send Telegram Message
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          bot_token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            📢 *New activity on ${{ github.repository }}* 📢
 
-      - name: Set up Git (for commit details)
-        run: git fetch --prune --unshallow
+            Event: ${{ github.event_name }}
 
-      - name: Send notification to Telegram
-        run: |
-          COMMIT_MESSAGE=$(git log -1 --pretty=format:'%s' || echo "No commit message")
-          COMMIT_HASH=$(git log -1 --pretty=format:'%h' || echo "N/A")
-          
-          MESSAGE="*🚀 Repository Update Notification*\n\n"
-          MESSAGE+="*Repository:* \`$GITHUB_REPOSITORY\`\n"
-          MESSAGE+="*Event:* \`$GITHUB_EVENT_NAME\`\n"
-          MESSAGE+="*Commit:* \`$COMMIT_HASH\`\n"
-          MESSAGE+="*Message:* $COMMIT_MESSAGE\n\n"
-          MESSAGE+="For more details, please check the repository."
+            ${{ github.event_name == 'push' && format('Commit by {0} pushed to {1}:\n{2}', github.actor, github.ref_name, github.event.head_commit.message) }}
+            ${{ github.event_name == 'release' && format('Release *{0}* published by {1}:\n{2}', github.event.release.tag_name, github.event.release.author.login, github.event.release.body) }}
 
-          # Send the message via Telegram Bot API
-          RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d text="$MESSAGE" \
-            -d parse_mode="Markdown" \
-            -d message_thread_id="${{ secrets.TELEGRAM_TOPIC_ID }}")
-          
-          echo "Telegram API Response: $RESPONSE"
+            🔗 Repository: https://github.com/${{ github.repository }}
+            ${{ github.event_name == 'push' && format('🔗 Commit Link: {0}', github.event.head_commit.url) }}
+            ${{ github.event_name == 'release' && format('🔗 Release Link: {0}', github.event.release.html_url) }}
