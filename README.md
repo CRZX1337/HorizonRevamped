@@ -1,4 +1,4 @@
-# Horizon Kernel Flasher
+# HorizonRevamped
 
 ## What is this?
 

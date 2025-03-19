@@ -1,2 +1,2 @@
 include ':app'
-rootProject.name = "Horizon Kernel Flasher"
+rootProject.name = "HorizonRevamped"

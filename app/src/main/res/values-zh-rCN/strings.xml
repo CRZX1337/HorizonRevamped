@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Horizon Kernel Flasher</string>
+    <string name="app_name">HorizonRevamped</string>
     <string name="please_select_kzip">请选择内核的可刷写zip文件</string>
     <string name="unable_cleanup">清理环境失败</string>
     <string name="unable_copy">复制文件失败</string>
@@ -11,7 +11,7 @@
     <string name="no">否</string>
     <string name="failed_reboot">重启失败</string>
     <string name="about">关于</string>
-    <string name="about_msg">作者：LibXZR (xzr467706992)</string>
+    <string name="about_msg">开发者：CRZX1337 | 原作者：LibXZR (xzr467706992)</string>
     <string name="ok">好</string>
     <string name="flash_new">刷入新文件</string>
     <string name="flashing">正在刷入</string>

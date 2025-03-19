@@ -124,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
                     .setPositiveButton(R.string.ok, null)
                     .setNegativeButton("Github", (dialog1, which1) -> MainActivity.this.startActivity(new Intent() {{
                         setAction(Intent.ACTION_VIEW);
-                        setData(Uri.parse("https://github.com/libxzr/HorizonKernelFlasher"));
+                        setData(Uri.parse("https://github.com/CRZX1337"));
                     }}))
                     .show();
         } else if (item.getItemId() == R.id.flash_new) {
