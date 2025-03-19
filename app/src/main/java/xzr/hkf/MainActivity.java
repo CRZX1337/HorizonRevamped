@@ -118,15 +118,24 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.about) {
-            new MaterialAlertDialogBuilder(this)
-                    .setTitle(R.string.about)
-                    .setMessage(R.string.about_msg)
+            View dialogView = getLayoutInflater().inflate(R.layout.dialog_about, null);
+            AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                    .setView(dialogView)
                     .setPositiveButton(R.string.ok, null)
-                    .setNegativeButton("Github", (dialog1, which1) -> MainActivity.this.startActivity(new Intent() {{
-                        setAction(Intent.ACTION_VIEW);
-                        setData(Uri.parse("https://github.com/CRZX1337"));
-                    }}))
-                    .show();
+                    .create();
+            
+            Button btnOriginalDev = dialogView.findViewById(R.id.btn_original_dev);
+            Button btnMainDev = dialogView.findViewById(R.id.btn_main_dev);
+            
+            btnOriginalDev.setOnClickListener(v -> {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/libxzr")));
+            });
+            
+            btnMainDev.setOnClickListener(v -> {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/CRZX1337")));
+            });
+            
+            dialog.show();
         } else if (item.getItemId() == R.id.flash_new) {
             flash_new();
         }

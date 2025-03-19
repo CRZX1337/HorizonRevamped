@@ -13,6 +13,8 @@
     <string name="about">About</string>
     <string name="about_msg">HorizonRevamped Developer: CRZX1337  HorizonKernelFlasher Developer: LibXZR</string>
     <string name="ok">ok</string>
+    <string name="main_dev">Main Developer</string>
+    <string name="original_dev">Original Developer</string>
     <string name="flash_new">Flash a new file</string>
     <string name="flashing">Flashing</string>
     <string name="flashing_done">Done</string>
