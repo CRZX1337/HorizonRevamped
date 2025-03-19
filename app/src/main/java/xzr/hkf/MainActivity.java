@@ -7,7 +7,7 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.ScrollView;
+import androidx.core.widget.NestedScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -19,11 +19,13 @@ import com.google.android.material.floatingactionbutton.ExtendedFloatingActionBu
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.transition.platform.MaterialSharedAxis;
 
+import android.app.Activity;
+
 public class MainActivity extends AppCompatActivity {
     static final boolean DEBUG = false;
 
     TextView logView;
-    ScrollView scrollView;
+    NestedScrollView scrollView;
 
     enum status {
         flashing,
@@ -134,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
     public static void _appendLog(String log, Activity activity) {
         activity.runOnUiThread(() -> {
             ((MainActivity) activity).logView.append(log + "\n");
-            ((MainActivity) activity).scrollView.fullScroll(ScrollView.FOCUS_DOWN);
+            ((MainActivity) activity).scrollView.fullScroll(View.FOCUS_DOWN);
         });
     }
 

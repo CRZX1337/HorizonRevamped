@@ -29,7 +29,7 @@
         <item name="android:windowExitTransition">@android:transition/explode</item>
         
         <!-- Enable dynamic colors on Android 12+ -->
-        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@drawable/icon</item>
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@mipmap/ic_launcher</item>
         <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/md_theme_dark_background</item>
     </style>
 </resources>

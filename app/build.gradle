@@ -7,7 +7,7 @@ android {
     buildToolsVersion '33.0.0'
 
     defaultConfig {
-        applicationId "crzx1337.horizonrevamped"
+        applicationId "xzr.hkf"
         minSdkVersion 21
         targetSdkVersion 33
         versionCode 4
@@ -24,7 +24,7 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-    namespace "crzx1337.horizonrevamped"
+    namespace "xzr.hkf"
 }
 
 dependencies {
