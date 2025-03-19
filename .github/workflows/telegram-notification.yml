@@ -32,11 +32,24 @@ jobs:
           MESSAGE_TEXT=""
 
           if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
-            MESSAGE_TEXT="📢 *New activity on ${GITHUB_REPOSITORY}* 📢\n\nEvent: ${GITHUB_EVENT_NAME}\n\nCommit by ${GITHUB_ACTOR} pushed to ${GITHUB_REF_NAME}:\n${GITHUB_COMMIT_MESSAGE}\n\n🔗 Repository: https://github.com/${GITHUB_REPOSITORY}\n🔗 Commit Link: ${GITHUB_COMMIT_URL}"
+            MESSAGE_TEXT="📢 *New activity on ${GITHUB_REPOSITORY}* 📢\n\n" \
+                         "*Event:* ${GITHUB_EVENT_NAME}\n" \
+                         "*Commit by:* ${GITHUB_ACTOR} pushed to ${GITHUB_REF_NAME}\n" \
+                         "*Message:* ${GITHUB_COMMIT_MESSAGE}\n\n" \
+                         "*Repository:* [${GITHUB_REPOSITORY}](https://github.com/${GITHUB_REPOSITORY})\n" \
+                         "*Commit Link:* [${GITHUB_COMMIT_MESSAGE:0:50}...](https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA})" # Shorten commit message in link text
+
           elif [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
-            MESSAGE_TEXT="📢 *New Release on ${GITHUB_REPOSITORY}* 📢\n\nEvent: ${GITHUB_EVENT_NAME}\n\nRelease *${GITHUB_RELEASE_TAG_NAME}* published by ${GITHUB_RELEASE_AUTHOR_LOGIN}:\n${GITHUB_RELEASE_BODY}\n\n🔗 Repository: https://github.com/${GITHUB_REPOSITORY}\n🔗 Release Link: ${GITHUB_RELEASE_HTML_URL}"
+            MESSAGE_TEXT="🎉 *New Release on ${GITHUB_REPOSITORY}* 🎉\n\n" \
+                         "*Event:* ${GITHUB_EVENT_NAME}\n" \
+                         "*Release:* *${GITHUB_RELEASE_TAG_NAME}* by ${GITHUB_RELEASE_AUTHOR_LOGIN}\n\n" \
+                         "*Repository:* [${GITHUB_REPOSITORY}](https://github.com/${GITHUB_REPOSITORY})\n" \
+                         "*Release Link:* [${GITHUB_RELEASE_TAG_NAME}](https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_RELEASE_TAG_NAME})\n\n" \
+                         "*Release Notes:*\n${GITHUB_RELEASE_BODY}"
           else
-            MESSAGE_TEXT="📢 *New activity on ${GITHUB_REPOSITORY}* 📢\n\nEvent: ${GITHUB_EVENT_NAME}\n\nSomething happened on the repository."
+            MESSAGE_TEXT="📢 *New activity on ${GITHUB_REPOSITORY}* 📢\n\n" \
+                         "*Event:* ${GITHUB_EVENT_NAME}\n\n" \
+                         "Something happened on the repository."
           fi
 
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
