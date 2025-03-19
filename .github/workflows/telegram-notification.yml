@@ -3,7 +3,7 @@ name: Telegram Notification
 on:
   push:
     branches:
-      - main # or your main branch name (e.g., master)
+      - master  # <--- Changed 'main' to 'master' here!
   release:
     types: [published]
 
@@ -16,7 +16,7 @@ jobs:
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}  # Changed 'bot_token' to 'token'
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
             📢 *New activity on ${{ github.repository }}* 📢
 
