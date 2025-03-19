@@ -1,0 +1,30 @@
+name: Telegram Notification
+
+on:
+  push:
+    branches:
+      - master # or your main branch name (e.g., master)
+  release:
+    types: [published]
+
+jobs:
+  telegram_notification:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Telegram Message
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          bot_token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            📢 *New activity on ${{ github.repository }}* 📢
+
+            Event: ${{ github.event_name }}
+
+            ${{ github.event_name == 'push' && format('Commit by {0} pushed to {1}:\n{2}', github.actor, github.ref_name, github.event.head_commit.message) }}
+            ${{ github.event_name == 'release' && format('Release *{0}* published by {1}:\n{2}', github.event.release.tag_name, github.event.release.author.login, github.event.release.body) }}
+
+            🔗 Repository: https://github.com/${{ github.repository }}
+            ${{ github.event_name == 'push' && format('🔗 Commit Link: {0}', github.event.head_commit.url) }}
+            ${{ github.event_name == 'release' && format('🔗 Release Link: {0}', github.event.release.html_url) }}
