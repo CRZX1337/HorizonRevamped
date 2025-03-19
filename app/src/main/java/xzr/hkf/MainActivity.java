@@ -1,17 +1,25 @@
 package xzr.hkf;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-public class MainActivity extends Activity {
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.splashscreen.SplashScreen;
+
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
+import com.google.android.material.progressindicator.LinearProgressIndicator;
+import com.google.android.material.transition.platform.MaterialSharedAxis;
+
+public class MainActivity extends AppCompatActivity {
     static final boolean DEBUG = false;
 
     TextView logView;
@@ -28,30 +36,54 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Apply splash screen
+        SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
+        
+        // Set up transitions
+        getWindow().setEnterTransition(new MaterialSharedAxis(MaterialSharedAxis.Z, true));
+        getWindow().setExitTransition(new MaterialSharedAxis(MaterialSharedAxis.Z, false));
+        
         super.onCreate(savedInstanceState);
-        scrollView = new ScrollView(this);
-        logView = new TextView(this);
-        logView.setTextIsSelectable(true);
-        scrollView.addView(logView);
-        setContentView(scrollView);
-
-        flash_new();
+        setContentView(R.layout.activity_main);
+        
+        // Initialize views
+        scrollView = findViewById(R.id.scrollView);
+        logView = findViewById(R.id.logView);
+        
+        // Set up toolbar
+        setSupportActionBar(findViewById(R.id.toolbar));
+        
+        // Set up FAB
+        ExtendedFloatingActionButton fabFlash = findViewById(R.id.fab_flash);
+        fabFlash.setOnClickListener(v -> flash_new());
+        
+        // Initialize status
+        cur_status = status.normal;
+        update_title();
     }
 
     void update_title() {
         runOnUiThread(() -> {
             switch (cur_status) {
                 case error:
-                    setTitle(R.string.failed);
+                    if (getSupportActionBar() != null) {
+                        getSupportActionBar().setTitle(R.string.failed);
+                    }
                     break;
                 case flashing:
-                    setTitle(R.string.flashing);
+                    if (getSupportActionBar() != null) {
+                        getSupportActionBar().setTitle(R.string.flashing);
+                    }
                     break;
                 case flashing_done:
-                    setTitle(R.string.flashing_done);
+                    if (getSupportActionBar() != null) {
+                        getSupportActionBar().setTitle(R.string.flashing_done);
+                    }
                     break;
                 default:
-                    setTitle(R.string.app_name);
+                    if (getSupportActionBar() != null) {
+                        getSupportActionBar().setTitle(R.string.app_name);
+                    }
             }
         });
     }
@@ -84,14 +116,15 @@ public class MainActivity extends Activity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.about) {
-            new AlertDialog.Builder(this)
+            new MaterialAlertDialogBuilder(this)
                     .setTitle(R.string.about)
                     .setMessage(R.string.about_msg)
                     .setPositiveButton(R.string.ok, null)
                     .setNegativeButton("Github", (dialog1, which1) -> MainActivity.this.startActivity(new Intent() {{
                         setAction(Intent.ACTION_VIEW);
                         setData(Uri.parse("https://github.com/libxzr/HorizonKernelFlasher"));
-                    }})).create().show();
+                    }}))
+                    .show();
         } else if (item.getItemId() == R.id.flash_new) {
             flash_new();
         }
