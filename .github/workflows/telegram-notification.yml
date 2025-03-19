@@ -12,20 +12,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Send Telegram Message to CLI Topic
-        uses: appleboy/telegram-action@master
-        with:
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          message: |
-            📢 *New activity on ${{ github.repository }}* 📢
+      - name: Send Telegram Message to CLI Topic (using curl)
+        shell: bash
+        env: # Make secrets easily available as environment variables in the script
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CLI_TOPIC_THREAD_ID: ${{ secrets.TELEGRAM_CLI_TOPIC_THREAD_ID }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          GITHUB_COMMIT_URL: ${{ github.event.head_commit.url }}
+          GITHUB_RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
+          GITHUB_RELEASE_AUTHOR_LOGIN: ${{ github.event.release.author.login }}
+          GITHUB_RELEASE_BODY: ${{ github.event.release.body }}
+          GITHUB_RELEASE_HTML_URL: ${{ github.event.release.html_url }}
+        run: |
+          MESSAGE_TEXT=""
 
-            Event: ${{ github.event_name }}
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            MESSAGE_TEXT="📢 *New activity on ${GITHUB_REPOSITORY}* 📢\n\nEvent: ${GITHUB_EVENT_NAME}\n\nCommit by ${GITHUB_ACTOR} pushed to ${GITHUB_REF_NAME}:\n${GITHUB_COMMIT_MESSAGE}\n\n🔗 Repository: https://github.com/${GITHUB_REPOSITORY}\n🔗 Commit Link: ${GITHUB_COMMIT_URL}"
+          elif [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+            MESSAGE_TEXT="📢 *New Release on ${GITHUB_REPOSITORY}* 📢\n\nEvent: ${GITHUB_EVENT_NAME}\n\nRelease *${GITHUB_RELEASE_TAG_NAME}* published by ${GITHUB_RELEASE_AUTHOR_LOGIN}:\n${GITHUB_RELEASE_BODY}\n\n🔗 Repository: https://github.com/${GITHUB_REPOSITORY}\n🔗 Release Link: ${GITHUB_RELEASE_HTML_URL}"
+          else
+            MESSAGE_TEXT="📢 *New activity on ${GITHUB_REPOSITORY}* 📢\n\nEvent: ${GITHUB_EVENT_NAME}\n\nSomething happened on the repository."
+          fi
 
-            ${{ github.event_name == 'push' && format('Commit by {0} pushed to {1}:\n{2}', github.actor, github.ref_name, github.event.head_commit.message) }}
-            ${{ github.event_name == 'release' && format('Release *{0}* published by {1}:\n{2}', github.event.release.tag_name, github.event.release.author.login, github.event.release.body) }}
-
-            🔗 Repository: https://github.com/${{ github.repository }}
-            ${{ github.event_name == 'push' && format('🔗 Commit Link: {0}', github.event.head_commit.url) }}
-            ${{ github.event_name == 'release' && format('🔗 Release Link: {0}', github.event.release.html_url) }}
-          args: '--message_thread_id ${{ secrets.TELEGRAM_CLI_TOPIC_THREAD_ID }}' # Add this line
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" \
+            -d "message_thread_id=${TELEGRAM_CLI_TOPIC_THREAD_ID}" \
+            -d "text=${MESSAGE_TEXT}" \
+            -d "parse_mode=Markdown" \
+            -d "disable_web_page_preview=true"
