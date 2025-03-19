@@ -1,0 +1,37 @@
+name: Notify Telegram on Push or Release
+
+on:
+  push:
+  release:
+    types: [published]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository (needed for commit details)
+        uses: actions/checkout@v3
+
+      - name: Set up Git (to retrieve commit info)
+        run: git fetch --prune --unshallow
+
+      - name: Send notification to Telegram
+        run: |
+          # Retrieve commit information (if available)
+          COMMIT_MESSAGE=$(git log -1 --pretty=format:'%s' || echo "No commit message")
+          COMMIT_HASH=$(git log -1 --pretty=format:'%h' || echo "N/A")
+          
+          # Construct a nicely formatted Markdown message
+          MESSAGE="*🚀 Repository Update Notification*\n\n"
+          MESSAGE+="*Repository:* \`$GITHUB_REPOSITORY\`\n"
+          MESSAGE+="*Event:* \`$GITHUB_EVENT_NAME\`\n"
+          MESSAGE+="*Commit:* \`$COMMIT_HASH\`\n"
+          MESSAGE+="*Message:* $COMMIT_MESSAGE\n\n"
+          MESSAGE+="For more details, please check the repository."
+
+          # Send the message via Telegram Bot API to the specified forum topic.
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d text="$MESSAGE" \
+            -d parse_mode="Markdown" \
+            -d message_thread_id="${{ secrets.TELEGRAM_TOPIC_ID }}"
