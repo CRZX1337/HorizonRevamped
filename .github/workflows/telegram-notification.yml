@@ -32,12 +32,9 @@ jobs:
 
       - name: Send Telegram notification
         uses: appleboy/telegram-action@master
-        env:
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         with:
-          to: ${{ env.TELEGRAM_CHAT_ID }}
-          token: ${{ env.TELEGRAM_BOT_TOKEN }}
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
             🔔 *New ${{ steps.commit-info.outputs.event_type }} to HorizonRevamped*
             
@@ -48,4 +45,5 @@ jobs:
             [View on GitHub](https://github.com/CRZX1337/HorizonRevamped/commit/${{ github.sha }})
           format: markdown
           message_thread_id: ${{ secrets.TELEGRAM_THREAD_ID }}
-          debug: true
+          disable_notification: false
+          disable_web_page_preview: false
