@@ -63,4 +63,4 @@ This project is licensed under the terms found in the [LICENSE](LICENSE) file.
 
 ## Credits 🙏
 
-Special thanks to the original [HorizonKernelFlasher](https://github.com/HorizonKernelFlasher/HorizonKernelFlasher) developer for the inspiration and foundation of this project.
+Special thanks to the original [HorizonKernelFlasher](https://github.com/libxzr/HorizonKernelFlasher) developer for the inspiration and foundation of this project.
