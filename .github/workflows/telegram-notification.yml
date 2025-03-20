@@ -44,4 +44,4 @@ jobs:
             
             [View on GitHub](https://github.com/CRZX1337/HorizonRevamped/commit/${{ github.sha }})
           format: markdown
-          message_thread_id: ${{ secrets.TELEGRAM_CLI_TOPIC_THREAD_ID }}
+          message_thread_id: "6"
