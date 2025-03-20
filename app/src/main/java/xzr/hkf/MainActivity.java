@@ -120,7 +120,7 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.about) {
             View dialogView = getLayoutInflater().inflate(R.layout.dialog_about, null);
-            AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+            androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                     .setView(dialogView)
                     .setPositiveButton(R.string.ok, null)
                     .create();

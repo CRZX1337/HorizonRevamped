@@ -24,6 +24,7 @@ jobs:
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           GITHUB_COMMIT_URL: ${{ github.event.head_commit.url }}
+          GITHUB_SHA: ${{ github.sha }} # Add GITHUB_SHA to env
           GITHUB_RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
           GITHUB_RELEASE_AUTHOR_LOGIN: ${{ github.event.release.author.login }}
           GITHUB_RELEASE_BODY: ${{ github.event.release.body }}
@@ -32,12 +33,14 @@ jobs:
           MESSAGE_TEXT=""
 
           if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            SHORT_COMMIT_MESSAGE=$(printf "%s" "$GITHUB_COMMIT_MESSAGE" | cut -c 1-50) # Use printf and cut for slicing
+
             MESSAGE_TEXT="📢 *New activity on ${GITHUB_REPOSITORY}* 📢\n\n"
             MESSAGE_TEXT+=\"*Event:* ${GITHUB_EVENT_NAME}\n\"
             MESSAGE_TEXT+=\"*Commit by:* ${GITHUB_ACTOR} pushed to ${GITHUB_REF_NAME}\n\"
             MESSAGE_TEXT+=\"*Message:* ${GITHUB_COMMIT_MESSAGE}\n\n\"
             MESSAGE_TEXT+=\"*Repository:* [${GITHUB_REPOSITORY}](https://github.com/${GITHUB_REPOSITORY})\n\"
-            MESSAGE_TEXT+=\"*Commit Link:* [${GITHUB_COMMIT_MESSAGE:0:50}...](https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA})\" # Shorten commit message in link text
+            MESSAGE_TEXT+=\"*Commit Link:* [\`${SHORT_COMMIT_MESSAGE}...\`](https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA})\" # Use SHORT_COMMIT_MESSAGE and backticks
 
           elif [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
             MESSAGE_TEXT="🎉 *New Release on ${GITHUB_REPOSITORY}* 🎉\n\n"
@@ -55,6 +58,6 @@ jobs:
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d "chat_id=${TELEGRAM_CHAT_ID}" \
             -d "message_thread_id=${TELEGRAM_CLI_TOPIC_THREAD_ID}" \
-            -d "text=\"$MESSAGE_TEXT\""  # Double quote the entire message text here
+            -d "text=\"$MESSAGE_TEXT\""
             -d "parse_mode=Markdown" \
             -d "disable_web_page_preview=true"
