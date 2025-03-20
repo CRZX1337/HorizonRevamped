@@ -14,6 +14,7 @@ import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
 import android.widget.Button;
+import androidx.appcompat.widget.AppCompatButton;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -215,14 +216,38 @@ public class MainActivity extends AppCompatActivity {
             
             Button btnOriginalDev = dialogView.findViewById(R.id.btn_original_dev);
             Button btnMainDev = dialogView.findViewById(R.id.btn_main_dev);
+            Button btnTelegram = dialogView.findViewById(R.id.btn_telegram);
             
-            btnOriginalDev.setOnClickListener(v -> {
-                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/libxzr")));
-            });
+            // Add null checks to prevent crashes
+            if (btnOriginalDev != null) {
+                btnOriginalDev.setOnClickListener(v -> {
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/libxzr")));
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Could not open link", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
             
-            btnMainDev.setOnClickListener(v -> {
-                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/CRZX1337")));
-            });
+            if (btnMainDev != null) {
+                btnMainDev.setOnClickListener(v -> {
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/CRZX1337")));
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Could not open link", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+            
+            if (btnTelegram != null) {
+                btnTelegram.setOnClickListener(v -> {
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/HorizonRevamped")));
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Could not open link", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
             
             dialog.show();
         } else if (item.getItemId() == R.id.flash_new) {

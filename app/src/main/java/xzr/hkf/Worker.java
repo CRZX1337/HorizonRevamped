@@ -4,8 +4,10 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
+import android.view.animation.OvershootInterpolator;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -224,78 +226,141 @@ public class Worker extends MainActivity.fileWorker {
     // Helper methods for UI updates
     private void updateProgress(String message) {
         activity.runOnUiThread(() -> {
-            if (progressText != null) {
-                progressText.setText(message);
+            try {
+                if (progressText != null) {
+                    progressText.setText(message);
+                }
+                // Also log the progress message
+                MainActivity._appendLog(message, activity);
+            } catch (Exception e) {
+                // Ignore if text view was already destroyed
             }
         });
     }
     
     private void dismissProgressDialog() {
         activity.runOnUiThread(() -> {
-            if (progressDialog != null && progressDialog.isShowing()) {
-                progressDialog.dismiss();
+            try {
+                if (progressDialog != null && progressDialog.isShowing()) {
+                    progressDialog.dismiss();
+                }
+            } catch (Exception e) {
+                // Ignore if dialog was already dismissed or activity was destroyed
             }
         });
     }
     
     private void showStatusNotification(int stringResId, boolean isSuccess) {
         activity.runOnUiThread(() -> {
-            View rootView = activity.findViewById(android.R.id.content);
-            View notificationView = activity.getLayoutInflater().inflate(R.layout.layout_status_notification, null);
+            try {
+                View rootView = activity.findViewById(android.R.id.content);
+                View notificationView = activity.getLayoutInflater().inflate(R.layout.layout_status_notification, null);
+                
+                MaterialCardView cardView = notificationView.findViewById(R.id.status_notification_card);
+                ImageView statusIcon = notificationView.findViewById(R.id.status_icon);
+                TextView statusMessage = notificationView.findViewById(R.id.status_message);
+                ImageButton closeButton = notificationView.findViewById(R.id.close_notification);
+                
+                statusMessage.setText(stringResId);
+                statusIcon.setImageResource(isSuccess ? android.R.drawable.ic_dialog_info : android.R.drawable.ic_dialog_alert);
+                
+                // Set card color based on status with better contrast
+                int colorResId = isSuccess ? R.color.md_theme_light_primaryContainer : R.color.md_theme_light_errorContainer;
+                cardView.setCardBackgroundColor(activity.getResources().getColor(colorResId));
+                
+                // Improve visibility with shadow and elevation
+                cardView.setCardElevation(activity.getResources().getDisplayMetrics().density * 8);
+                cardView.setStrokeWidth(0);
+                
+                // Calculate margins once for reuse
+                int marginDp = 16;
+                int bottomMarginDp = 72; // Larger bottom margin to avoid FAB
+                float density = activity.getResources().getDisplayMetrics().density;
+                int marginPx = (int)(marginDp * density);
+                int bottomMarginPx = (int)(bottomMarginDp * density);
+                
+                // Add to the root layout - safely handle different view types
+                ViewGroup rootLayout;
+                
+                if (rootView instanceof CoordinatorLayout) {
+                    rootLayout = (CoordinatorLayout) rootView;
+                    CoordinatorLayout.LayoutParams params = new CoordinatorLayout.LayoutParams(
+                            CoordinatorLayout.LayoutParams.WRAP_CONTENT,
+                            CoordinatorLayout.LayoutParams.WRAP_CONTENT);
+                    params.gravity = Gravity.BOTTOM | Gravity.END;
+                    params.setMargins(marginPx, marginPx, marginPx, bottomMarginPx); // Add margin to avoid FAB
+                    rootLayout.addView(notificationView, params);
+                } else if (rootView instanceof ViewGroup) {
+                    rootLayout = (ViewGroup) rootView;
+                    ViewGroup.MarginLayoutParams params = new ViewGroup.MarginLayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT);
+                    params.setMargins(marginPx, marginPx, marginPx, bottomMarginPx); // Add margin to avoid FAB
+                    notificationView.setLayoutParams(params);
+                    
+                    // Position at bottom-right
+                    notificationView.setX(rootView.getWidth() - notificationView.getWidth() - marginPx);
+                    notificationView.setY(rootView.getHeight() - notificationView.getHeight() - bottomMarginPx);
+                    
+                    rootLayout.addView(notificationView);
+                } else {
+                    // Fallback to showing a Toast if we can't add the view
+                    Toast.makeText(activity, stringResId, Toast.LENGTH_LONG).show();
+                    return;
+                }
             
-            MaterialCardView cardView = notificationView.findViewById(R.id.status_notification_card);
-            ImageView statusIcon = notificationView.findViewById(R.id.status_icon);
-            TextView statusMessage = notificationView.findViewById(R.id.status_message);
-            ImageButton closeButton = notificationView.findViewById(R.id.close_notification);
-            
-            statusMessage.setText(stringResId);
-            statusIcon.setImageResource(isSuccess ? android.R.drawable.ic_dialog_info : android.R.drawable.ic_dialog_alert);
-            
-            // Set card color based on status
-            int colorResId = isSuccess ? R.color.md_theme_light_primaryContainer : R.color.md_theme_light_errorContainer;
-            cardView.setCardBackgroundColor(activity.getResources().getColor(colorResId));
-            
-            // Add to the root layout
-            CoordinatorLayout.LayoutParams params = new CoordinatorLayout.LayoutParams(
-                    CoordinatorLayout.LayoutParams.MATCH_PARENT,
-                    CoordinatorLayout.LayoutParams.WRAP_CONTENT);
-            params.gravity = Gravity.TOP;
-            
-            CoordinatorLayout rootLayout = (CoordinatorLayout) rootView;
-            rootLayout.addView(notificationView, params);
-            
-            // Animate in
-            cardView.setVisibility(View.VISIBLE);
-            cardView.setAlpha(0f);
-            cardView.setTranslationY(-100f);
-            cardView.animate()
-                    .alpha(1f)
-                    .translationY(0f)
-                    .setDuration(300)
-                    .setInterpolator(new DecelerateInterpolator())
-                    .start();
-            
-            // Set up auto-dismiss after 3 seconds
-            cardView.postDelayed(() -> {
+                // Animate in from right side with bounce effect
+                cardView.setVisibility(View.VISIBLE);
+                cardView.setAlpha(0f);
+                cardView.setTranslationX(200f);
                 cardView.animate()
-                        .alpha(0f)
-                        .translationY(-100f)
-                        .setDuration(300)
-                        .setInterpolator(new AccelerateInterpolator())
-                        .withEndAction(() -> rootLayout.removeView(notificationView))
+                        .alpha(1f)
+                        .translationX(0f)
+                        .setDuration(400)
+                        .setInterpolator(new OvershootInterpolator(0.7f))
                         .start();
-            }, 3000);
-            
-            // Set up close button
-            closeButton.setOnClickListener(v -> {
-                cardView.animate()
-                        .alpha(0f)
-                        .translationY(-100f)
-                        .setDuration(300)
-                        .setInterpolator(new AccelerateInterpolator())
-                        .withEndAction(() -> rootLayout.removeView(notificationView))
-                        .start();
-            });
+                
+                // Set up auto-dismiss after 3 seconds
+                cardView.postDelayed(() -> {
+                    cardView.animate()
+                            .alpha(0f)
+                            .translationX(200f)
+                            .setDuration(300)
+                            .setInterpolator(new AccelerateInterpolator())
+                            .withEndAction(() -> {
+                                if (rootLayout != null) {
+                                    try {
+                                        rootLayout.removeView(notificationView);
+                                    } catch (Exception e) {
+                                        // Ignore if view was already removed
+                                    }
+                                }
+                            })
+                            .start();
+                }, 7000);
+                
+                // Set up close button
+                closeButton.setOnClickListener(v -> {
+                    cardView.animate()
+                            .alpha(0f)
+                            .translationX(200f)
+                            .setDuration(300)
+                            .setInterpolator(new AccelerateInterpolator())
+                            .withEndAction(() -> {
+                                if (rootLayout != null) {
+                                    try {
+                                        rootLayout.removeView(notificationView);
+                                    } catch (Exception e) {
+                                        // Ignore if view was already removed
+                                    }
+                                }
+                            })
+                            .start();
+                });
+            } catch (Exception e) {
+                // Fallback to Toast if anything goes wrong
+                Toast.makeText(activity, stringResId, Toast.LENGTH_LONG).show();
+            }
         });
     }
     
