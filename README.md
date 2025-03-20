@@ -1,8 +1,8 @@
 # HorizonRevamped 🚀
 
 [![Version](https://img.shields.io/badge/version-1.0.1-blue.svg)](https://github.com/CRZX1337/HorizonRevamped/releases)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ## About 📱
 
