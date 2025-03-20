@@ -37,8 +37,7 @@ jobs:
             MESSAGE_TEXT+=\"*Commit by:* ${GITHUB_ACTOR} pushed to ${GITHUB_REF_NAME}\n\"
             MESSAGE_TEXT+=\"*Message:* ${GITHUB_COMMIT_MESSAGE}\n\n\"
             MESSAGE_TEXT+=\"*Repository:* [${GITHUB_REPOSITORY}](https://github.com/${GITHUB_REPOSITORY})\n\"
-            MESSAGE_TEXT+=\"*Commit Link:* [\`${SHORT_COMMIT_MESSAGE}...\`](${COMMIT_LINK_URL})\" # Use variable in Markdown link
-
+            MESSAGE_TEXT+=\"*Commit Link:* ${COMMIT_LINK_URL}\" # Raw URL, no Markdown link
 
           elif [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
             MESSAGE_TEXT="🎉 *New Release on ${GITHUB_REPOSITORY}* 🎉\n\n"
