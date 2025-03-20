@@ -33,8 +33,8 @@ jobs:
       - name: Send Telegram notification
         uses: appleboy/telegram-action@master
         with:
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          to: "-1002394191820"
+          token: "8163721712:AAGGRn8kAf5PuHbML5gXnGoadY1b54llHnQ"
           message: |
             🔔 *New ${{ steps.commit-info.outputs.event_type }} to HorizonRevamped*
             
