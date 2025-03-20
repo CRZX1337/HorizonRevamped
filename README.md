@@ -10,7 +10,7 @@ HorizonRevamped is a powerful and user-friendly Android application designed to 
 
 ## Features ✨
 
-- 🔹 Material You design with dynamic theming
+- 🔹 MaterialYou design
 - 🔹 Smooth, refined animations
 - 🔹 Support for all AnyKernel3 flashable zips
 - 🔹 Root required for operation
