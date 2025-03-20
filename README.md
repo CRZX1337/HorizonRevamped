@@ -15,8 +15,8 @@ HorizonRevamped is a powerful and user-friendly Android application designed to 
 - 🔹 Support for all AnyKernel3 flashable zips
 - 🔹 Root required for operation
 - 🔹 Fast and efficient flashing process
-- 🔹 Backup and restore functionality
-- 🔹 Detailed logging for troubleshooting
+- 🔹 Backup and restore functionality (WIP!)
+- 🔹 Detailed logging for troubleshooting (WIP!)
 
 ## Media 📷
 
