@@ -43,7 +43,7 @@ HorizonRevamped is a powerful and user-friendly Android application designed to 
 
 ## Requirements 📋
 
-- 📱 Android 7.0 or higher
+- 📱 Android 13.0 or higher
 - 🔓 Unlocked bootloader
 - ⚡ Root access (KernelSU, Magisk)
 
