@@ -214,20 +214,10 @@ public class MainActivity extends AppCompatActivity {
                     .setPositiveButton(R.string.ok, null)
                     .create();
             
-            Button btnOriginalDev = dialogView.findViewById(R.id.btn_original_dev);
             Button btnMainDev = dialogView.findViewById(R.id.btn_main_dev);
             Button btnTelegram = dialogView.findViewById(R.id.btn_telegram);
             
             // Add null checks to prevent crashes
-            if (btnOriginalDev != null) {
-                btnOriginalDev.setOnClickListener(v -> {
-                    try {
-                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/libxzr")));
-                    } catch (Exception e) {
-                        Toast.makeText(this, "Could not open link", Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
             
             if (btnMainDev != null) {
                 btnMainDev.setOnClickListener(v -> {

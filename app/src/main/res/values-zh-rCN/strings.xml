@@ -11,10 +11,9 @@
     <string name="no">否</string>
     <string name="failed_reboot">重启失败</string>
     <string name="about">关于</string>
-    <string name="about_msg">开发者：CRZX1337 | 原作者：LibXZR (xzr467706992)</string>
+    <string name="about_msg">开发者：CRZX1337</string>
     <string name="ok">好</string>
-    <string name="main_dev">主要开发者</string>
-    <string name="original_dev">原始开发者</string>
+    <string name="main_dev">开发者</string>
     <string name="telegram_group">电报群组</string>
     <string name="flash_new">刷入新文件</string>
     <string name="flashing">正在刷入</string>
