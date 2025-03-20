@@ -2,9 +2,19 @@ package xzr.hkf;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.view.Gravity;
+import android.view.View;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.DecelerateInterpolator;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.documentfile.provider.DocumentFile;
+
+import com.google.android.material.card.MaterialCardView;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -26,12 +36,27 @@ public class Worker extends MainActivity.fileWorker {
         this.activity = activity;
     }
 
+    private androidx.appcompat.app.AlertDialog progressDialog;
+    private TextView progressText;
+    
     public void run() {
         MainActivity.cur_status = MainActivity.status.flashing;
         ((MainActivity) activity).update_title();
         is_error = false;
         file_path = activity.getFilesDir().getAbsolutePath() + "/" + DocumentFile.fromSingleUri(activity, uri).getName();
         binary_path = activity.getFilesDir().getAbsolutePath() + "/META-INF/com/google/android/update-binary";
+        
+        // Show flashing progress dialog
+        activity.runOnUiThread(() -> {
+            View dialogView = activity.getLayoutInflater().inflate(R.layout.dialog_flashing_progress, null);
+            progressText = dialogView.findViewById(R.id.progress_text);
+            progressDialog = new com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
+                    .setView(dialogView)
+                    .setCancelable(false)
+                    .create();
+            progressDialog.show();
+            updateProgress("Preparing environment...");
+        });
 
         try {
             cleanup();
@@ -42,16 +67,21 @@ public class Worker extends MainActivity.fileWorker {
             MainActivity._appendLog(activity.getResources().getString(R.string.unable_cleanup), activity);
             MainActivity.cur_status = MainActivity.status.error;
             ((MainActivity) activity).update_title();
+            dismissProgressDialog();
             return;
         }
+        updateProgress("Checking root access...");
 
         if (!rootAvailable()) {
             MainActivity._appendLog(activity.getResources().getString(R.string.unable_flash_root), activity);
             MainActivity.cur_status = MainActivity.status.error;
             ((MainActivity) activity).update_title();
+            dismissProgressDialog();
+            showStatusNotification(R.string.unable_flash_root, false);
             return;
         }
 
+        updateProgress("Copying files...");
         try {
             copy();
         } catch (IOException ioException) {
@@ -63,9 +93,12 @@ public class Worker extends MainActivity.fileWorker {
             MainActivity._appendLog(activity.getResources().getString(R.string.unable_copy), activity);
             MainActivity.cur_status = MainActivity.status.error;
             ((MainActivity) activity).update_title();
+            dismissProgressDialog();
+            showStatusNotification(R.string.unable_copy, false);
             return;
         }
 
+        updateProgress("Extracting binary...");
         try {
             getBinary();
         } catch (IOException ioException) {
@@ -75,14 +108,19 @@ public class Worker extends MainActivity.fileWorker {
             MainActivity._appendLog(activity.getResources().getString(R.string.unable_get_exe), activity);
             MainActivity.cur_status = MainActivity.status.error;
             ((MainActivity) activity).update_title();
+            dismissProgressDialog();
+            showStatusNotification(R.string.unable_get_exe, false);
             return;
         }
 
+        updateProgress("Patching binary...");
         try {
             patch();
         } catch (IOException ignored) {
         }
 
+        updateProgress("Flashing kernel...");
+        showStatusNotification(R.string.flashing, true);
         try {
             flash(activity);
         } catch (IOException ioException) {
@@ -92,8 +130,12 @@ public class Worker extends MainActivity.fileWorker {
             MainActivity._appendLog(activity.getResources().getString(R.string.unable_flash_error), activity);
             MainActivity.cur_status = MainActivity.status.error;
             ((MainActivity) activity).update_title();
+            dismissProgressDialog();
+            showStatusNotification(R.string.unable_flash_error, false);
             return;
         }
+        dismissProgressDialog();
+        showStatusNotification(R.string.flashing_done, true);
         activity.runOnUiThread(() -> {
             new AlertDialog.Builder(activity)
                     .setTitle(R.string.reboot_complete_title)
@@ -179,6 +221,84 @@ public class Worker extends MainActivity.fileWorker {
         runWithNewProcessReturn(su, cmd);
     }
 
+    // Helper methods for UI updates
+    private void updateProgress(String message) {
+        activity.runOnUiThread(() -> {
+            if (progressText != null) {
+                progressText.setText(message);
+            }
+        });
+    }
+    
+    private void dismissProgressDialog() {
+        activity.runOnUiThread(() -> {
+            if (progressDialog != null && progressDialog.isShowing()) {
+                progressDialog.dismiss();
+            }
+        });
+    }
+    
+    private void showStatusNotification(int stringResId, boolean isSuccess) {
+        activity.runOnUiThread(() -> {
+            View rootView = activity.findViewById(android.R.id.content);
+            View notificationView = activity.getLayoutInflater().inflate(R.layout.layout_status_notification, null);
+            
+            MaterialCardView cardView = notificationView.findViewById(R.id.status_notification_card);
+            ImageView statusIcon = notificationView.findViewById(R.id.status_icon);
+            TextView statusMessage = notificationView.findViewById(R.id.status_message);
+            ImageButton closeButton = notificationView.findViewById(R.id.close_notification);
+            
+            statusMessage.setText(stringResId);
+            statusIcon.setImageResource(isSuccess ? android.R.drawable.ic_dialog_info : android.R.drawable.ic_dialog_alert);
+            
+            // Set card color based on status
+            int colorResId = isSuccess ? R.color.md_theme_light_primaryContainer : R.color.md_theme_light_errorContainer;
+            cardView.setCardBackgroundColor(activity.getResources().getColor(colorResId));
+            
+            // Add to the root layout
+            CoordinatorLayout.LayoutParams params = new CoordinatorLayout.LayoutParams(
+                    CoordinatorLayout.LayoutParams.MATCH_PARENT,
+                    CoordinatorLayout.LayoutParams.WRAP_CONTENT);
+            params.gravity = Gravity.TOP;
+            
+            CoordinatorLayout rootLayout = (CoordinatorLayout) rootView;
+            rootLayout.addView(notificationView, params);
+            
+            // Animate in
+            cardView.setVisibility(View.VISIBLE);
+            cardView.setAlpha(0f);
+            cardView.setTranslationY(-100f);
+            cardView.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(300)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .start();
+            
+            // Set up auto-dismiss after 3 seconds
+            cardView.postDelayed(() -> {
+                cardView.animate()
+                        .alpha(0f)
+                        .translationY(-100f)
+                        .setDuration(300)
+                        .setInterpolator(new AccelerateInterpolator())
+                        .withEndAction(() -> rootLayout.removeView(notificationView))
+                        .start();
+            }, 3000);
+            
+            // Set up close button
+            closeButton.setOnClickListener(v -> {
+                cardView.animate()
+                        .alpha(0f)
+                        .translationY(-100f)
+                        .setDuration(300)
+                        .setInterpolator(new AccelerateInterpolator())
+                        .withEndAction(() -> rootLayout.removeView(notificationView))
+                        .start();
+            });
+        });
+    }
+    
     String runWithNewProcessReturn(boolean su, String cmd) throws IOException {
         Process process = null;
         if (su) {
