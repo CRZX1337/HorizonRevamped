@@ -17,13 +17,15 @@ HorizonRevamped is a powerful and user-friendly Android application designed to 
 - 🔹 Backup and restore functionality
 - 🔹 Detailed logging for troubleshooting
 
-## Screenshots 📷
+## Media 📷
 
 <p align="center">
   <img src="screenshots/1.png" width="180" height="400" />
   <img src="screenshots/2.png" width="180" height="400" />
   <img src="screenshots/3.png" width="180" height="400" />
   <img src="screenshots/4.png" width="180" height="400" />
+  <img src="screenshots/preview.gif" width="180" height="400" />
+
 </p>
 
 ## Installation 📲
