@@ -4,7 +4,9 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 
-// ... existing About section remains the same ...
+## About 📱
+
+HorizonRevamped is a powerful and user-friendly Android application designed to flash [AnyKernel](https://github.com/osm0sis/AnyKernel3) flashable zips on Android devices. It provides a streamlined interface for kernel installation and management, making the process accessible to both beginners and advanced users.
 
 ## Features ✨
 
