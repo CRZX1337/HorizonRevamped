@@ -22,4 +22,6 @@
     <string name="task_running">A task is still running</string>
     <string name="unable_flash_root">Unable to get root permission</string>
     <string name="unable_flash_error">An error occurred while flashing</string>
+    <string name="log_timestamp">[%1$s] %2$s</string>
+    <string name="success_screen_title">Flashing Completed!</string>
 </resources>

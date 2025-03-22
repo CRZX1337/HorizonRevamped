@@ -33,13 +33,5 @@
             android:textSize="14sp"
             android:textColor="@color/black"
             android:textAppearance="?attr/textAppearanceBodyMedium" />
-
-        <ImageButton
-            android:id="@+id/close_notification"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
-            app:tint="?attr/colorOnSurfaceVariant" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
