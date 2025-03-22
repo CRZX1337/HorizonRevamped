@@ -1,8 +1,8 @@
 # HorizonRevamped 🚀
 
 [![Version](https://img.shields.io/badge/version-1.0.1-blue.svg)](https://github.com/CRZX1337/HorizonRevamped/releases)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ## About 📱
 
@@ -10,13 +10,13 @@ HorizonRevamped is a powerful and user-friendly Android application designed to 
 
 ## Features ✨
 
-- 🔹 Material You design with dynamic theming
+- 🔹 MaterialYou design
 - 🔹 Smooth, refined animations
 - 🔹 Support for all AnyKernel3 flashable zips
 - 🔹 Root required for operation
 - 🔹 Fast and efficient flashing process
-- 🔹 Backup and restore functionality
-- 🔹 Detailed logging for troubleshooting
+- 🔹 Backup and restore functionality (WIP!)
+- 🔹 Detailed logging for troubleshooting (WIP!)
 
 ## Media 📷
 
@@ -43,7 +43,7 @@ HorizonRevamped is a powerful and user-friendly Android application designed to 
 
 ## Requirements 📋
 
-- 📱 Android 7.0 or higher
+- 📱 Android 13.0 or higher
 - 🔓 Unlocked bootloader
 - ⚡ Root access (KernelSU, Magisk)
 
