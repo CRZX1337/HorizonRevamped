@@ -22,6 +22,7 @@ import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.documentfile.provider.DocumentFile;
 
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.snackbar.Snackbar;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -117,6 +118,21 @@ public class Worker extends MainActivity.fileWorker {
             dismissProgressDialog();
             showStatusNotification(R.string.unable_flash_root, false);
             return;
+        }
+
+        // Create backup before proceeding
+        updateProgress("Creating kernel backup...");
+        try {
+            createBackup();
+        } catch (IOException ioException) {
+            logWithTimestamp("Warning: Failed to create backup - " + ioException.getMessage());
+            // Show warning but continue with flashing
+            activity.runOnUiThread(() -> {
+                Snackbar.make(activity.findViewById(R.id.fab_flash), 
+                    R.string.backup_warning, Snackbar.LENGTH_LONG)
+                    .setAnimationMode(Snackbar.ANIMATION_MODE_SLIDE)
+                    .show();
+            });
         }
 
         updateProgress("Copying files...");
@@ -279,6 +295,20 @@ public class Worker extends MainActivity.fileWorker {
         logWithTimestamp("Creating directory structure for binary");
         runWithNewProcessNoReturn(true, "mkdir -p " + activity.getFilesDir().getAbsolutePath() + "/META-INF/com/google/android");
         
+        // Check if it's a valid AnyKernel3 zip by verifying that it contains required files
+        logWithTimestamp("Verifying AnyKernel3 zip contents");
+        String checkAnyKernel = runWithNewProcessReturn(true, "unzip -l " + file_path + " | grep -E 'anykernel.sh|META-INF/com/google/android/update-binary'");
+        
+        if (checkAnyKernel == null || 
+            !checkAnyKernel.contains("anykernel.sh") || 
+            !checkAnyKernel.contains("META-INF/com/google/android/update-binary")) {
+            
+            logWithTimestamp("Invalid AnyKernel3 zip! Essential files missing");
+            is_error = true;
+            return;
+        }
+        
+        logWithTimestamp("AnyKernel3 zip verification successful");
         logWithTimestamp("Extracting update binary from zip");
         String extractResult = runWithNewProcessReturn(true, "unzip -p " + file_path + " META-INF/com/google/android/update-binary > " + binary_path);
         if (extractResult != null && !extractResult.isEmpty()) {
@@ -366,6 +396,564 @@ public class Worker extends MainActivity.fileWorker {
 
     void reboot() throws IOException {
         runWithNewProcessNoReturn(true, "svc power reboot");
+    }
+
+    // Helper method to get the boot partition path
+    private String getBootPartition() throws IOException {
+        // First, let's log all partitions for debugging
+        logWithTimestamp("Searching for boot partition...");
+        String allPartitions = runWithNewProcessReturn(true, "ls -la /dev/block/*/*/by-name/ 2>/dev/null");
+        logWithTimestamp("Available partitions: " + allPartitions);
+        
+        // Get current boot slot for A/B devices
+        String currentSlot = runWithNewProcessReturn(true, "getprop ro.boot.slot_suffix").trim();
+        logWithTimestamp("Current boot slot: " + currentSlot);
+        
+        // First try to find boot partition name directly from logs
+        if (allPartitions != null && !allPartitions.isEmpty()) {
+            if (allPartitions.contains("boot_a") || allPartitions.contains("boot_b")) {
+                logWithTimestamp("Device uses A/B partition scheme");
+                
+                // Try to match specific boot partition based on current slot
+                String bootPartitionName = "boot" + (currentSlot.isEmpty() ? "_a" : currentSlot);
+                logWithTimestamp("Looking for partition: " + bootPartitionName);
+                
+                // Extract direct device path from partition listing
+                String[] lines = allPartitions.split("\n");
+                for (String line : lines) {
+                    if (line.contains(bootPartitionName + " ->")) {
+                        String blockDevice = line.substring(line.lastIndexOf("->") + 2).trim();
+                        logWithTimestamp("Found boot partition device: " + blockDevice);
+                        return blockDevice;
+                    }
+                }
+                
+                // If we can't find the exact boot partition, try checking by fixed paths
+                String[] possibleABPaths = {
+                    "/dev/block/by-name/" + bootPartitionName,
+                    "/dev/block/bootdevice/by-name/" + bootPartitionName,
+                    "/dev/block/platform/*/by-name/" + bootPartitionName
+                };
+                
+                for (String path : possibleABPaths) {
+                    logWithTimestamp("Checking A/B path: " + path);
+                    String result = runWithNewProcessReturn(true, "ls -l " + path + " 2>/dev/null");
+                    if (result != null && !result.isEmpty() && !result.contains("No such file")) {
+                        if (result.contains("->")) {
+                            String[] parts = result.split("->");
+                            if (parts.length > 1) {
+                                String bootPath = parts[1].trim();
+                                logWithTimestamp("Found A/B boot partition symlink: " + bootPath);
+                                return bootPath;
+                            }
+                        }
+                        logWithTimestamp("Found A/B boot partition: " + path);
+                        return path;
+                    }
+                }
+                
+                // Last resort for A/B: try direct hardcoded paths based on logs
+                if (allPartitions.contains("boot_a -> /dev/block/sda13")) {
+                    String bootPath = currentSlot.equals("_b") ? "/dev/block/sda23" : "/dev/block/sda13";
+                    logWithTimestamp("Using direct block device based on logs: " + bootPath);
+                    return bootPath;
+                }
+            }
+        }
+        
+        // Try common boot partition locations (for non-A/B devices)
+        String[] possibleBootLocations = {
+                "/dev/block/by-name/boot",
+                "/dev/block/bootdevice/by-name/boot",
+                "/dev/block/platform/*/by-name/boot"
+        };
+        
+        for (String location : possibleBootLocations) {
+            logWithTimestamp("Checking location: " + location);
+            
+            String result = runWithNewProcessReturn(true, "ls -l " + location + " 2>/dev/null");
+            logWithTimestamp("Result: " + result);
+            
+            if (result != null && !result.isEmpty() && !result.contains("No such file")) {
+                if (result.contains("->")) {
+                    String[] parts = result.split("->");
+                    if (parts.length > 1) {
+                        String path = parts[1].trim();
+                        logWithTimestamp("Found boot partition symlink: " + path);
+                        return path;
+                    }
+                }
+                logWithTimestamp("Found boot partition: " + location);
+                return location;
+            }
+        }
+        
+        // Try find command - look for both boot and boot_a/boot_b
+        logWithTimestamp("Trying alternative detection method...");
+        String findCommand = "find /dev/block -type l -name 'boot*' 2>/dev/null | head -1";
+        logWithTimestamp("Running find command: " + findCommand);
+        String foundBoot = runWithNewProcessReturn(true, findCommand);
+        
+        if (foundBoot != null && !foundBoot.isEmpty()) {
+            logWithTimestamp("Found boot partition via find: " + foundBoot.trim());
+            return foundBoot.trim();
+        }
+        
+        // If all else fails and we know there's an A/B system from the logs above
+        if (allPartitions != null && allPartitions.contains("boot_a")) {
+            logWithTimestamp("Falling back to hardcoded boot_a");
+            return "/dev/block/by-name/boot_a";
+        }
+        
+        logWithTimestamp("Warning: Using default fallback boot partition path");
+        return "/dev/block/bootdevice/by-name/boot";
+    }
+    
+    // Create backup of the boot image before flashing
+    void createBackup() throws IOException {
+        try {
+            // Create backup directory if it doesn't exist
+            File backupDir = new File(activity.getFilesDir(), "backups");
+            if (!backupDir.exists()) {
+                boolean dirCreated = backupDir.mkdirs();
+                if (!dirCreated) {
+                    logWithTimestamp("Warning: Failed to create backup directory");
+                }
+            }
+            
+            // Create timestamped backup file
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US);
+            String timestamp = dateFormat.format(new Date());
+            
+            // Only backup boot partition during auto backup
+            String bootPartition = getBootPartition();
+            if (bootPartition == null) {
+                throw new IOException("Unable to determine boot partition");
+            }
+            
+            // Create boot backup file
+            File backupFile = new File(backupDir, "boot_backup_" + timestamp + ".img");
+            
+            logWithTimestamp("Backing up boot partition: " + bootPartition);
+            logWithTimestamp("Backup location: " + backupFile.getAbsolutePath());
+            
+            // Use dd to dump the boot partition with better error handling
+            String ddCommand = "dd if=" + bootPartition + " of=" + backupFile.getAbsolutePath() + " bs=4096";
+            logWithTimestamp("Running command: " + ddCommand);
+            String result = runWithNewProcessReturn(true, ddCommand);
+            
+            logWithTimestamp("DD command result: " + result);
+            
+            if (!backupFile.exists()) {
+                logWithTimestamp("Error: Backup file was not created");
+                throw new IOException("Backup file does not exist after dd command");
+            }
+            
+            if (backupFile.length() == 0) {
+                logWithTimestamp("Error: Backup file is empty");
+                throw new IOException("Backup file is empty (0 bytes)");
+            }
+            
+            // Save metadata about this backup
+            saveBackupMetadata(backupFile.getName(), "boot", timestamp);
+            
+            logWithTimestamp("Backup created successfully (" + (backupFile.length() / 1024) + " KB)");
+            
+            // Save the path to the most recent backup
+            setLatestBackupPath(backupFile.getAbsolutePath());
+        } catch (Exception e) {
+            logWithTimestamp("Backup creation failed: " + e.getMessage());
+            e.printStackTrace();
+            throw new IOException("Backup failed: " + e.getMessage());
+        }
+    }
+    
+    // Multi-partition backup with external storage support
+    boolean createMultiPartitionBackup(String[] partitionNames, boolean useExternalStorage) {
+        boolean allSuccessful = true;
+        int successCount = 0;
+        int failCount = 0;
+        
+        try {
+            // Create timestamped folder name
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US);
+            String timestamp = dateFormat.format(new Date());
+            
+            // Determine backup directory
+            File backupDir;
+            if (useExternalStorage) {
+                // Use primary external storage (sdcard/HorizonRevamped/backups/)
+                File externalDir = new File(android.os.Environment.getExternalStorageDirectory(), "HorizonRevamped/backups/" + timestamp);
+                if (!externalDir.exists()) {
+                    boolean created = externalDir.mkdirs();
+                    if (!created) {
+                        logWithTimestamp("Failed to create external backup directory");
+                        return false;
+                    }
+                }
+                backupDir = externalDir;
+            } else {
+                // Use internal app storage
+                backupDir = new File(activity.getFilesDir(), "backups/" + timestamp);
+                if (!backupDir.exists()) {
+                    boolean created = backupDir.mkdirs();
+                    if (!created) {
+                        logWithTimestamp("Failed to create internal backup directory");
+                        return false;
+                    }
+                }
+            }
+            
+            logWithTimestamp("Creating backups in: " + backupDir.getAbsolutePath());
+            
+            // Back up each selected partition
+            for (String partitionName : partitionNames) {
+                try {
+                    // Get partition path based on name
+                    String partitionPath = getPartitionPath(partitionName);
+                    if (partitionPath == null) {
+                        logWithTimestamp("Warning: Unable to find " + partitionName + " partition");
+                        failCount++;
+                        continue;
+                    }
+                    
+                    // Create backup file for this partition
+                    File backupFile = new File(backupDir, partitionName + ".img");
+                    
+                    logWithTimestamp("Backing up " + partitionName + " partition: " + partitionPath);
+                    logWithTimestamp("Backup location: " + backupFile.getAbsolutePath());
+                    
+                    // Use dd to create backup
+                    String ddCommand = "dd if=" + partitionPath + " of=" + backupFile.getAbsolutePath() + " bs=4096";
+                    logWithTimestamp("Running command: " + ddCommand);
+                    String result = runWithNewProcessReturn(true, ddCommand);
+                    
+                    logWithTimestamp("DD command result for " + partitionName + ": " + result);
+                    
+                    if (!backupFile.exists() || backupFile.length() == 0) {
+                        logWithTimestamp("Error: " + partitionName + " backup file is empty or doesn't exist");
+                        failCount++;
+                    } else {
+                        // Save metadata about this backup
+                        savePartitionBackupMetadata(backupFile.getName(), partitionName, partitionPath, timestamp, backupDir);
+                        logWithTimestamp(partitionName + " backup created successfully (" + (backupFile.length() / 1024) + " KB)");
+                        successCount++;
+                    }
+                } catch (Exception e) {
+                    logWithTimestamp(partitionName + " backup failed: " + e.getMessage());
+                    failCount++;
+                }
+            }
+            
+            // Create a summary file
+            try {
+                File summaryFile = new File(backupDir, "backup_summary.txt");
+                FileOutputStream fos = new FileOutputStream(summaryFile);
+                OutputStreamWriter writer = new OutputStreamWriter(fos);
+                writer.write("# HorizonRevamped Backup Summary\n");
+                writer.write("Timestamp: " + timestamp + "\n");
+                writer.write("Success: " + successCount + "\n");
+                writer.write("Failed: " + failCount + "\n");
+                writer.write("Partitions: " + String.join(", ", partitionNames) + "\n");
+                writer.flush();
+                writer.close();
+            } catch (Exception e) {
+                logWithTimestamp("Warning: Failed to write backup summary - " + e.getMessage());
+            }
+            
+            // Return true only if all backups were successful
+            return failCount == 0;
+            
+        } catch (Exception e) {
+            logWithTimestamp("Multi-partition backup failed: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    // Helper method to get partition path based on name
+    private String getPartitionPath(String partitionName) throws IOException {
+        // Log all partitions for debugging
+        logWithTimestamp("Looking for " + partitionName + " partition...");
+        
+        // For boot partition, use the specialized method
+        if (partitionName.equals("boot")) {
+            return getBootPartition();
+        }
+        
+        // Get current slot for A/B devices
+        String currentSlot = runWithNewProcessReturn(true, "getprop ro.boot.slot_suffix").trim();
+        logWithTimestamp("Current slot: " + currentSlot);
+        
+        // Get all partitions listing for reference
+        String allPartitions = runWithNewProcessReturn(true, "ls -la /dev/block/*/*/by-name/ 2>/dev/null");
+        
+        // For special case of system_dlkm (exact match is important)
+        if (partitionName.equals("system_dlkm")) {
+            String partitionWithSlot = "system_dlkm" + currentSlot;
+            logWithTimestamp("Looking for exact " + partitionWithSlot + " partition");
+            
+            // Try direct paths first with exact match
+            String[] possiblePaths = {
+                "/dev/block/by-name/" + partitionWithSlot,
+                "/dev/block/bootdevice/by-name/" + partitionWithSlot,
+                "/dev/block/mapper/" + partitionWithSlot
+            };
+            
+            for (String path : possiblePaths) {
+                String checkResult = runWithNewProcessReturn(true, "ls -l " + path + " 2>/dev/null");
+                if (checkResult != null && !checkResult.isEmpty() && !checkResult.contains("No such file")) {
+                    logWithTimestamp("Found system_dlkm partition at: " + path);
+                    return path;
+                }
+            }
+            
+            // Try find command specifically for system_dlkm
+            String findCmd = "find /dev/block -name \"system_dlkm*\" -o -name \"system_dlkm" + currentSlot + "\" 2>/dev/null | head -1";
+            String result = runWithNewProcessReturn(true, findCmd);
+            if (result != null && !result.isEmpty()) {
+                logWithTimestamp("Found system_dlkm via find: " + result.trim());
+                return result.trim();
+            }
+        }
+        
+        // Special case for vendor_boot (exact match is important)
+        if (partitionName.equals("vendor_boot")) {
+            String partitionWithSlot = "vendor_boot" + currentSlot;
+            logWithTimestamp("Looking for exact " + partitionWithSlot + " partition");
+            
+            // Parse the partition listing to find exact matches
+            if (allPartitions != null && !allPartitions.isEmpty()) {
+                String[] lines = allPartitions.split("\n");
+                for (String line : lines) {
+                    if (line.contains(partitionWithSlot + " ->")) {
+                        String blockDevice = line.substring(line.lastIndexOf("->") + 2).trim();
+                        logWithTimestamp("Found vendor_boot partition: " + blockDevice);
+                        return blockDevice;
+                    }
+                }
+            }
+            
+            // Try direct paths
+            String[] possiblePaths = {
+                "/dev/block/by-name/" + partitionWithSlot,
+                "/dev/block/bootdevice/by-name/" + partitionWithSlot
+            };
+            
+            for (String path : possiblePaths) {
+                String checkResult = runWithNewProcessReturn(true, "ls -l " + path + " 2>/dev/null");
+                if (checkResult != null && !checkResult.isEmpty() && !checkResult.contains("No such file")) {
+                    logWithTimestamp("Found vendor_boot partition at: " + path);
+                    return path;
+                }
+            }
+        }
+        
+        // Special case for vendor_kernel_boot
+        if (partitionName.equals("vendor_kernel_boot")) {
+            String partitionWithSlot = "vendor_kernel_boot" + currentSlot;
+            logWithTimestamp("Looking for exact " + partitionWithSlot + " partition");
+            
+            // Parse the partition listing to find exact matches
+            if (allPartitions != null && !allPartitions.isEmpty()) {
+                String[] lines = allPartitions.split("\n");
+                for (String line : lines) {
+                    if (line.contains(partitionWithSlot + " ->")) {
+                        String blockDevice = line.substring(line.lastIndexOf("->") + 2).trim();
+                        logWithTimestamp("Found vendor_kernel_boot partition: " + blockDevice);
+                        return blockDevice;
+                    }
+                }
+            }
+        }
+        
+        // Special case for init_boot
+        if (partitionName.equals("init_boot")) {
+            String partitionWithSlot = "init_boot" + currentSlot;
+            logWithTimestamp("Looking for exact " + partitionWithSlot + " partition");
+            
+            // Parse the partition listing to find exact matches
+            if (allPartitions != null && !allPartitions.isEmpty()) {
+                String[] lines = allPartitions.split("\n");
+                for (String line : lines) {
+                    if (line.contains(partitionWithSlot + " ->")) {
+                        String blockDevice = line.substring(line.lastIndexOf("->") + 2).trim();
+                        logWithTimestamp("Found init_boot partition: " + blockDevice);
+                        return blockDevice;
+                    }
+                }
+            }
+        }
+        
+        // For other partitions, first try with slot suffix
+        String partitionWithSlot = partitionName + currentSlot;
+        logWithTimestamp("Checking for " + partitionWithSlot + " partition");
+        
+        // Try exactly parsing the partition listing first
+        if (allPartitions != null && !allPartitions.isEmpty()) {
+            String[] lines = allPartitions.split("\n");
+            
+            // First, try exact name with slot suffix
+            for (String line : lines) {
+                if (line.contains(" " + partitionWithSlot + " ->")) {
+                    String blockDevice = line.substring(line.lastIndexOf("->") + 2).trim();
+                    logWithTimestamp("Found " + partitionWithSlot + " partition: " + blockDevice);
+                    return blockDevice;
+                }
+            }
+            
+            // Then try without slot suffix
+            for (String line : lines) {
+                if (line.contains(" " + partitionName + " ->")) {
+                    String blockDevice = line.substring(line.lastIndexOf("->") + 2).trim();
+                    logWithTimestamp("Found " + partitionName + " partition: " + blockDevice);
+                    return blockDevice;
+                }
+            }
+        }
+        
+        // If listing didn't work, try direct paths
+        String[] possibleLocations = {
+            "/dev/block/by-name/" + partitionWithSlot,
+            "/dev/block/bootdevice/by-name/" + partitionWithSlot,
+            "/dev/block/platform/*/by-name/" + partitionWithSlot,
+            "/dev/block/by-name/" + partitionName,
+            "/dev/block/bootdevice/by-name/" + partitionName,
+            "/dev/block/platform/*/by-name/" + partitionName
+        };
+        
+        for (String location : possibleLocations) {
+            logWithTimestamp("Checking location: " + location);
+            String result = runWithNewProcessReturn(true, "ls -l " + location + " 2>/dev/null");
+            
+            if (result != null && !result.isEmpty() && !result.contains("No such file")) {
+                if (result.contains("->")) {
+                    String[] parts = result.split("->");
+                    if (parts.length > 1) {
+                        String path = parts[1].trim();
+                        logWithTimestamp("Found " + partitionName + " symlink: " + path);
+                        return path;
+                    }
+                }
+                logWithTimestamp("Found " + partitionName + " partition: " + location);
+                return location;
+            }
+        }
+        
+        // As a fallback, try simpler find command
+        String findCommand = "find /dev/block -type l -name '" + partitionName + "*' 2>/dev/null | head -1";
+        logWithTimestamp("Running find command: " + findCommand);
+        String foundPartition = runWithNewProcessReturn(true, findCommand);
+        
+        if (foundPartition != null && !foundPartition.isEmpty()) {
+            logWithTimestamp("Found " + partitionName + " via find: " + foundPartition.trim());
+            return foundPartition.trim();
+        }
+        
+        // If not found, return null
+        logWithTimestamp("Could not find " + partitionName + " partition");
+        return null;
+    }
+    
+    // Save metadata specific to a partition backup
+    private void savePartitionBackupMetadata(String filename, String partitionName, String partitionPath, 
+                                            String timestamp, File backupDir) throws IOException {
+        // Create metadata.txt in the backup directory
+        File metadataFile = new File(backupDir, "metadata.txt");
+        boolean isNewFile = !metadataFile.exists();
+        
+        FileOutputStream fos = new FileOutputStream(metadataFile, true); // Append mode
+        OutputStreamWriter writer = new OutputStreamWriter(fos);
+        
+        if (isNewFile) {
+            writer.write("# HorizonRevamped Backup Metadata\n");
+            writer.write("# Format: filename|partition_name|partition_path|timestamp|kernel_version\n");
+        }
+        
+        // Try to get kernel version
+        String kernelVersion = runWithNewProcessReturn(false, "uname -r").trim();
+        
+        writer.write(filename + "|" + partitionName + "|" + partitionPath + "|" + timestamp + "|" + kernelVersion + "\n");
+        writer.flush();
+        writer.close();
+    }
+    
+    // Update existing method to handle external storage
+    private void saveBackupMetadata(String filename, String partitionName, String timestamp) throws IOException {
+        File metadataFile = new File(activity.getFilesDir(), "backups/metadata.txt");
+        boolean isNewFile = !metadataFile.exists();
+        
+        FileOutputStream fos = new FileOutputStream(metadataFile, true); // Append mode
+        OutputStreamWriter writer = new OutputStreamWriter(fos);
+        
+        if (isNewFile) {
+            writer.write("# HorizonRevamped Backup Metadata\n");
+            writer.write("# Format: filename|partition|timestamp|kernel_version\n");
+        }
+        
+        // Try to get kernel version
+        String kernelVersion = runWithNewProcessReturn(false, "uname -r").trim();
+        
+        String bootPartition = getBootPartition();
+        writer.write(filename + "|" + bootPartition + "|" + timestamp + "|" + kernelVersion + "\n");
+        writer.flush();
+        writer.close();
+    }
+    
+    // Save the path of the most recent backup for quick restore
+    private void setLatestBackupPath(String path) {
+        try {
+            File latestFile = new File(activity.getFilesDir(), "backups/latest_backup.txt");
+            FileOutputStream fos = new FileOutputStream(latestFile);
+            OutputStreamWriter writer = new OutputStreamWriter(fos);
+            writer.write(path);
+            writer.flush();
+            writer.close();
+        } catch (IOException e) {
+            logWithTimestamp("Warning: Failed to save latest backup path - " + e.getMessage());
+        }
+    }
+    
+    // Method to restore the most recent backup
+    void restoreLatestBackup() throws IOException {
+        // Get the latest backup path
+        File latestFile = new File(activity.getFilesDir(), "backups/latest_backup.txt");
+        if (!latestFile.exists()) {
+            throw new IOException("No backup available to restore");
+        }
+        
+        // Read the path of the latest backup
+        BufferedReader reader = new BufferedReader(new InputStreamReader(new java.io.FileInputStream(latestFile)));
+        String backupPath = reader.readLine();
+        reader.close();
+        
+        if (backupPath == null || backupPath.isEmpty()) {
+            throw new IOException("Invalid backup path");
+        }
+        
+        File backupFile = new File(backupPath);
+        if (!backupFile.exists()) {
+            throw new IOException("Backup file not found: " + backupPath);
+        }
+        
+        // Get the boot partition
+        String bootPartition = getBootPartition();
+        if (bootPartition == null) {
+            throw new IOException("Unable to determine boot partition");
+        }
+        
+        logWithTimestamp("Restoring backup from: " + backupPath);
+        logWithTimestamp("Target partition: " + bootPartition);
+        
+        // Use dd to flash the backup back to the boot partition
+        String result = runWithNewProcessReturn(true, 
+                "dd if=" + backupPath + " of=" + bootPartition);
+        
+        if (result == null || result.contains("error")) {
+            throw new IOException("Restore failed: " + result);
+        }
+        
+        logWithTimestamp("Backup restored successfully");
     }
 
     void runWithNewProcessNoReturn(boolean su, String cmd) throws IOException {
@@ -528,6 +1116,245 @@ public class Worker extends MainActivity.fileWorker {
         bufferedReader.close();
         process.destroy();
         return ret.toString();
+    }
+
+    /**
+     * Restores multiple partitions from a given backup folder
+     * @param backupFolder The folder containing the backup
+     * @param selectedPartitions Array of partition names to restore
+     * @return true if all restores succeeded, false if any failed
+     */
+    public boolean restoreMultiplePartitions(File backupFolder, String[] selectedPartitions) {
+        if (backupFolder == null || !backupFolder.exists() || !backupFolder.isDirectory()) {
+            logWithTimestamp("Invalid backup folder specified");
+            return false;
+        }
+
+        if (selectedPartitions == null || selectedPartitions.length == 0) {
+            logWithTimestamp("No partitions selected for restore");
+            return false;
+        }
+
+        logWithTimestamp("Restoring from backup: " + backupFolder.getName());
+        logWithTimestamp("Selected partitions: " + String.join(", ", selectedPartitions));
+
+        boolean allSucceeded = true;
+        for (String partitionName : selectedPartitions) {
+            logWithTimestamp("Restoring partition: " + partitionName);
+            
+            // Find the backup file for this partition
+            File backupFile = new File(backupFolder, partitionName + ".img");
+            if (!backupFile.exists()) {
+                logWithTimestamp("Error: Backup file not found for " + partitionName);
+                allSucceeded = false;
+                continue;
+            }
+
+            // Find the target partition path
+            String partitionPath = getPartitionPathByName(partitionName);
+            if (partitionPath == null) {
+                logWithTimestamp("Error: Could not locate " + partitionName + " partition");
+                allSucceeded = false;
+                continue;
+            }
+
+            // Restore the partition
+            boolean success = restorePartition(backupFile, partitionPath);
+            if (!success) {
+                logWithTimestamp("Failed to restore " + partitionName);
+                allSucceeded = false;
+            } else {
+                logWithTimestamp(partitionName + " restored successfully");
+            }
+        }
+
+        return allSucceeded;
+    }
+
+    /**
+     * Restores a partition from a backup file
+     * @param backupFile The backup image file
+     * @param partitionPath The path to the target partition
+     * @return true if restore succeeded, false otherwise
+     */
+    private boolean restorePartition(File backupFile, String partitionPath) {
+        if (!backupFile.exists()) {
+            logWithTimestamp("Backup file does not exist: " + backupFile.getAbsolutePath());
+            return false;
+        }
+
+        if (backupFile.length() == 0) {
+            logWithTimestamp("Backup file is empty");
+            return false;
+        }
+
+        // Check if the partition exists
+        if (!new File(partitionPath).exists()) {
+            logWithTimestamp("Target partition not found: " + partitionPath);
+            return false;
+        }
+
+        logWithTimestamp("Restoring " + backupFile.getName() + " to " + partitionPath);
+
+        try {
+            Process process = Runtime.getRuntime().exec(new String[]{
+                "sh", "-c", "dd if=" + backupFile.getAbsolutePath() + 
+                " of=" + partitionPath + " bs=4096"
+            });
+            
+            // Read output to prevent buffer overflow
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                logWithTimestamp(line);
+            }
+            
+            // Read error output
+            reader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            while ((line = reader.readLine()) != null) {
+                logWithTimestamp("Error: " + line);
+            }
+            
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                logWithTimestamp("dd command failed with exit code: " + exitCode);
+                return false;
+            }
+            
+            return true;
+        } catch (Exception e) {
+            logWithTimestamp("Exception during restore: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * Gets the partition path by name
+     * @param partitionName The name of the partition (boot, recovery, etc.)
+     * @return The full path to the partition device, or null if not found
+     */
+    private String getPartitionPathByName(String partitionName) {
+        // First check common locations
+        String[] commonPaths = {
+            "/dev/block/by-name/" + partitionName,
+            "/dev/block/bootdevice/by-name/" + partitionName,
+        };
+        
+        for (String path : commonPaths) {
+            File file = new File(path);
+            if (file.exists()) {
+                logWithTimestamp("Found " + partitionName + " at " + path);
+                return path;
+            }
+        }
+        
+        // Try platform glob pattern
+        try {
+            Process process = Runtime.getRuntime().exec(new String[]{
+                "sh", "-c", "ls -la /dev/block/platform/*/by-name/" + partitionName
+            });
+            
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line = reader.readLine();
+            if (line != null && !line.contains("No such file")) {
+                // Extract the path from the ls output
+                String[] parts = line.split(" -> ");
+                if (parts.length > 0) {
+                    String path = parts[0].trim();
+                    logWithTimestamp("Found " + partitionName + " at " + path);
+                    return path;
+                }
+            }
+        } catch (Exception e) {
+            logWithTimestamp("Error searching platform paths: " + e.getMessage());
+        }
+        
+        // Last resort: try to find with find command
+        try {
+            Process process = Runtime.getRuntime().exec(new String[]{
+                "sh", "-c", "find /dev/block -name " + partitionName + " -type l 2>/dev/null | head -n 1"
+            });
+            
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line = reader.readLine();
+            if (line != null && !line.isEmpty()) {
+                logWithTimestamp("Found " + partitionName + " at " + line);
+                return line;
+            }
+        } catch (Exception e) {
+            logWithTimestamp("Error using find command: " + e.getMessage());
+        }
+        
+        logWithTimestamp("Could not find " + partitionName + " partition");
+        return null;
+    }
+
+    // Get a list of available backup folders in both internal and external storage
+    java.util.List<File> getAvailableBackupFolders() {
+        java.util.List<File> backupFolders = new java.util.ArrayList<>();
+        
+        try {
+            // Check internal app backups
+            File internalBackupsDir = new File(activity.getFilesDir(), "backups");
+            if (internalBackupsDir.exists() && internalBackupsDir.isDirectory()) {
+                File[] folders = internalBackupsDir.listFiles(File::isDirectory);
+                if (folders != null) {
+                    for (File folder : folders) {
+                        backupFolders.add(folder);
+                    }
+                }
+            }
+            
+            // Check external storage backups
+            File externalDir = new File(android.os.Environment.getExternalStorageDirectory(), "HorizonRevamped/backups");
+            if (externalDir.exists() && externalDir.isDirectory()) {
+                File[] folders = externalDir.listFiles(File::isDirectory);
+                if (folders != null) {
+                    for (File folder : folders) {
+                        backupFolders.add(folder);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logWithTimestamp("Error finding backup folders: " + e.getMessage());
+        }
+        
+        return backupFolders;
+    }
+    
+    // Get list of available partition backups in a specific folder
+    java.util.List<String> getAvailablePartitionBackups(File backupFolder) {
+        java.util.List<String> partitions = new java.util.ArrayList<>();
+        
+        if (!backupFolder.exists() || !backupFolder.isDirectory()) {
+            return partitions;
+        }
+        
+        // Get list of img files in the folder
+        File[] files = backupFolder.listFiles(file -> 
+            file.isFile() && file.getName().endsWith(".img"));
+        
+        if (files != null) {
+            for (File file : files) {
+                String filename = file.getName();
+                // Extract partition name from filename
+                String partitionName;
+                if (filename.contains("_")) {
+                    // For filenames like boot_backup_date.img
+                    partitionName = filename.substring(0, filename.indexOf("_"));
+                } else {
+                    // For filenames like boot.img
+                    partitionName = filename.substring(0, filename.indexOf(".img"));
+                }
+                
+                if (!partitionName.isEmpty() && !partitions.contains(partitionName)) {
+                    partitions.add(partitionName);
+                }
+            }
+        }
+        
+        return partitions;
     }
 
 }

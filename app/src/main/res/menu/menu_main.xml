@@ -3,8 +3,30 @@
 
     <item
         android:id="@+id/flash_new"
-        android:orderInCategory="0"
+        android:orderInCategory="100"
+        android:icon="@android:drawable/ic_menu_upload"
         android:title="@string/flash_new">
+    </item>
+
+    <item
+        android:id="@+id/create_backup"
+        android:orderInCategory="150"
+        android:icon="@android:drawable/ic_menu_save"
+        android:title="@string/create_backup">
+    </item>
+
+    <item
+        android:id="@+id/restore_backup"
+        android:orderInCategory="200"
+        android:icon="@android:drawable/ic_menu_revert"
+        android:title="@string/restore_backup">
+    </item>
+
+    <item
+        android:id="@+id/manage_backups"
+        android:orderInCategory="300" 
+        android:icon="@android:drawable/ic_menu_save"
+        android:title="@string/manage_backups">
     </item>
 
     <item

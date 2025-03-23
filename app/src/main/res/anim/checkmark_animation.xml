@@ -1,23 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <set xmlns:android="http://schemas.android.com/apk/res/android"
-    android:fillAfter="true">
-    
-    <scale
-        android:duration="300"
-        android:fromXScale="0.0"
-        android:fromYScale="0.0"
-        android:pivotX="50%"
-        android:pivotY="50%"
-        android:toXScale="1.0"
-        android:toYScale="1.0"
-        android:interpolator="@android:interpolator/overshoot" />
-        
-    <rotate
-        android:duration="400"
-        android:fromDegrees="-45"
-        android:toDegrees="0"
-        android:pivotX="50%"
-        android:pivotY="50%"
-        android:startOffset="200"
-        android:interpolator="@android:interpolator/decelerate_quad" />
+    android:ordering="sequentially">
+    <set>
+        <objectAnimator
+            android:duration="300"
+            android:propertyName="scaleX"
+            android:valueFrom="0.0"
+            android:valueTo="1.2"
+            android:valueType="floatType"
+            android:interpolator="@android:interpolator/overshoot" />
+        <objectAnimator
+            android:duration="300"
+            android:propertyName="scaleY"
+            android:valueFrom="0.0"
+            android:valueTo="1.2"
+            android:valueType="floatType"
+            android:interpolator="@android:interpolator/overshoot" />
+    </set>
+    <set>
+        <objectAnimator
+            android:duration="100"
+            android:propertyName="scaleX"
+            android:valueFrom="1.2"
+            android:valueTo="1.0"
+            android:valueType="floatType" />
+        <objectAnimator
+            android:duration="100"
+            android:propertyName="scaleY"
+            android:valueFrom="1.2"
+            android:valueTo="1.0"
+            android:valueType="floatType" />
+    </set>
 </set>
