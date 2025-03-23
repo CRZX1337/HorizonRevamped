@@ -30,7 +30,8 @@ jobs:
           mkdir -p app/src/main/res/animator
           
           # Check if button_pulse.xml is in anim directory and should be in animator directory
-          if [ -f app/src/main/res/anim/button_pulse.xml ]; then
+          # Only copy if the file doesn't already exist in animator directory
+          if [ -f app/src/main/res/anim/button_pulse.xml ] && [ ! -f app/src/main/res/animator/button_pulse.xml ]; then
             echo "Moving button_pulse.xml from anim to animator directory"
             cp app/src/main/res/anim/button_pulse.xml app/src/main/res/animator/
             # Don't delete original to avoid build failures in other places
