@@ -54,7 +54,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // Apply splash screen
-        SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
+        // TEMPORARILY DISABLED FOR DEBUGGING
+        // SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
         
         // Set up transitions with 3D effect
         getWindow().setEnterTransition(new MaterialSharedAxis(MaterialSharedAxis.Z, true));

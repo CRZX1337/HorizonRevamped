@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Outer glow (larger blur) -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="20dp" />
+            <padding
+                android:bottom="3dp"
+                android:left="3dp"
+                android:right="3dp"
+                android:top="3dp" />
+            <solid android:color="#407B1FA2" />
+            <corners android:radius="16dp" />
+        </shape>
+    </item>
+    <!-- Inner glow (smaller blur) -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="18dp" />
+            <padding
+                android:bottom="2dp"
+                android:left="2dp"
+                android:right="2dp"
+                android:top="2dp" />
+            <solid android:color="#60D500F9" />
+            <corners android:radius="16dp" />
+        </shape>
+    </item>
+    <!-- Card background -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="225"
+                android:endColor="#252528"
+                android:centerColor="#2D2D32"
+                android:startColor="#35353A"
+                android:type="linear" />
+            <corners android:radius="16dp" />
+            <stroke
+                android:width="1.5dp"
+                android:color="#9C27B0" />
+        </shape>
+    </item>
+</layer-list> 

@@ -1,5 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Dialog animation style -->
+    <style name="SplashScreenTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+    
+    <!-- Dialog animation style for 3D effects -->
     <style name="DialogAnimation">
         <item name="android:windowEnterAnimation">@anim/dialog_enter</item>
         <item name="android:windowExitAnimation">@anim/dialog_exit</item>

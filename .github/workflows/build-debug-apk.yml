@@ -23,12 +23,60 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
+        
+      - name: Check resources
+        run: |
+          # Create animator directory if it doesn't exist
+          mkdir -p app/src/main/res/animator
+          
+          # Check if button_pulse.xml is in anim directory and should be in animator directory
+          if [ -f app/src/main/res/anim/button_pulse.xml ]; then
+            echo "Moving button_pulse.xml from anim to animator directory"
+            cp app/src/main/res/anim/button_pulse.xml app/src/main/res/animator/
+            # Don't delete original to avoid build failures in other places
+          fi
+
+      - name: Enable debug logs
+        run: |
+          echo "org.gradle.logging.level=debug" >> gradle.properties
+          echo "android.debug.obsoleteApi=true" >> gradle.properties
 
       - name: Build with Gradle
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Run lint check
+        run: ./gradlew lint --stacktrace
+
+      - name: Upload lint results
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-results
+          path: app/build/reports/lint-results*.html
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk 
+          path: app/build/outputs/apk/debug/app-debug.apk
+          
+      - name: Generate release timestamp
+        id: timestamp
+        run: echo "timestamp=$(date +'%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
+          
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: debug-build-${{ steps.timestamp.outputs.timestamp }}
+          name: Debug Build ${{ steps.timestamp.outputs.timestamp }}
+          body: |
+            Debug APK automatically built from the latest code in the repository.
+            
+            **Build Date:** $(date +'%Y-%m-%d %H:%M:%S UTC')
+            **Branch:** ${{ github.ref_name }}
+            **Commit:** ${{ github.sha }}
+          draft: false
+          prerelease: true
+          files: app/build/outputs/apk/debug/app-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

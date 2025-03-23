@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:ordering="together">
+    <!-- First fade out -->
+    <objectAnimator
+        android:propertyName="alpha"
+        android:duration="200"
+        android:valueFrom="1.0"
+        android:valueTo="0.0"
+        android:valueType="floatType" />
+        
+    <!-- Quickly scale down with slight bounce -->
+    <objectAnimator
+        android:propertyName="scaleX"
+        android:duration="300"
+        android:valueFrom="1.0"
+        android:valueTo="0.0"
+        android:valueType="floatType"
+        android:interpolator="@android:interpolator/accelerate_cubic" />
+    <objectAnimator
+        android:propertyName="scaleY"
+        android:duration="300"
+        android:valueFrom="1.0"
+        android:valueTo="0.0"
+        android:valueType="floatType"
+        android:interpolator="@android:interpolator/accelerate_cubic" />
+        
+    <!-- Add a slight drop down -->
+    <objectAnimator
+        android:propertyName="translationY"
+        android:duration="300"
+        android:valueFrom="0"
+        android:valueTo="50"
+        android:valueType="floatType"
+        android:interpolator="@android:interpolator/accelerate_cubic" />
+</set> 

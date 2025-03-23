@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android">
+    <set android:ordering="together">
+        <!-- Scale down slightly -->
+        <objectAnimator
+            android:propertyName="scaleX"
+            android:duration="150"
+            android:valueFrom="1.0"
+            android:valueTo="0.95"
+            android:valueType="floatType"
+            android:interpolator="@android:interpolator/fast_out_slow_in"/>
+        <objectAnimator
+            android:propertyName="scaleY"
+            android:duration="150"
+            android:valueFrom="1.0"
+            android:valueTo="0.95"
+            android:valueType="floatType"
+            android:interpolator="@android:interpolator/fast_out_slow_in"/>
+        
+        <!-- Push button "down" in 3D space -->
+        <objectAnimator
+            android:propertyName="translationZ"
+            android:duration="150"
+            android:valueFrom="4dp"
+            android:valueTo="0dp"
+            android:valueType="floatType"
+            android:interpolator="@android:interpolator/fast_out_slow_in"/>
+            
+        <!-- Slight rotation for 3D effect -->
+        <objectAnimator
+            android:propertyName="rotationX"
+            android:duration="150"
+            android:valueFrom="0"
+            android:valueTo="5"
+            android:valueType="floatType"
+            android:interpolator="@android:interpolator/fast_out_slow_in"/>
+    </set>
+</set> 
