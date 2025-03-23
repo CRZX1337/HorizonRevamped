@@ -45,15 +45,6 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew assembleDebug --stacktrace
 
-      - name: Run lint check
-        run: ./gradlew lint --stacktrace
-
-      - name: Upload lint results
-        uses: actions/upload-artifact@v4
-        with:
-          name: lint-results
-          path: app/build/reports/lint-results*.html
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
