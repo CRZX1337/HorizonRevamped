@@ -55,18 +55,31 @@ jobs:
         id: timestamp
         run: echo "timestamp=$(date +'%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
           
+      - name: Set build date
+        id: build_date
+        run: echo "date=$(date +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
+          
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: debug-build-${{ steps.timestamp.outputs.timestamp }}
-          name: Debug Build ${{ steps.timestamp.outputs.timestamp }}
+          name: Horizon Revamped Build ${{ steps.timestamp.outputs.timestamp }}
           body: |
-            Debug APK automatically built from the latest code in the repository.
+            ## Horizon Revamped Debug Build
             
-            **Build Date:** $(date +'%Y-%m-%d %H:%M:%S UTC')
+            This is an automated development build of Horizon Revamped.
+            
+            ### Build Information
+            **Release Date:** ${{ steps.build_date.outputs.date }}
             **Branch:** ${{ github.ref_name }}
             **Commit:** ${{ github.sha }}
+            
+            ### Installation
+            Download and install the APK on your Android device.
+            
+            ### Feedback
+            Please report any issues or bugs through GitHub Issues.
           draft: false
           prerelease: true
           files: app/build/outputs/apk/debug/app-debug.apk
