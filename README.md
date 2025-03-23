@@ -1,7 +1,7 @@
 # HorizonRevamped 🚀
 
 [![Version](https://img.shields.io/badge/version-1.2-blue.svg)](https://github.com/CRZX1337/HorizonRevamped/releases)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
+[![Build Status](https://github.com/CRZX1337/HorizonRevamped/actions/workflows/build-debug-apk.yml/badge.svg)](https://github.com/CRZX1337/HorizonRevamped/actions)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ## About 📱

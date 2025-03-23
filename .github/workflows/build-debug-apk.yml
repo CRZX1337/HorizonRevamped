@@ -45,15 +45,20 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew assembleDebug --stacktrace
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
-          
       - name: Generate release timestamp
         id: timestamp
         run: echo "timestamp=$(date +'%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
+      
+      - name: Rename APK
+        run: |
+          mkdir -p renamed-apk
+          cp app/build/outputs/apk/debug/app-debug.apk renamed-apk/HorizonRevamped-Debug-${{ steps.timestamp.outputs.timestamp }}.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: HorizonRevamped-Debug-${{ steps.timestamp.outputs.timestamp }}
+          path: renamed-apk/HorizonRevamped-Debug-${{ steps.timestamp.outputs.timestamp }}.apk
           
       - name: Set build date
         id: build_date
@@ -82,6 +87,6 @@ jobs:
             Please report any issues or bugs through GitHub Issues.
           draft: false
           prerelease: true
-          files: app/build/outputs/apk/debug/app-debug.apk
+          files: renamed-apk/HorizonRevamped-Debug-${{ steps.timestamp.outputs.timestamp }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
