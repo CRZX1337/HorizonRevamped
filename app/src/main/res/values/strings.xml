@@ -84,4 +84,5 @@
     <string name="no_backup_details">Failed to load backup details</string>
     <string name="error_showing_backup_details">Error showing backup details</string>
     <string name="no_backup_images">No backup images found</string>
+    <string name="grant">Grant</string>
 </resources>

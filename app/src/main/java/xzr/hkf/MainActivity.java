@@ -15,6 +15,7 @@ import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
 import android.widget.Button;
 import androidx.appcompat.widget.AppCompatButton;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -31,6 +32,7 @@ import com.google.android.material.floatingactionbutton.ExtendedFloatingActionBu
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.transition.platform.MaterialSharedAxis;
+import com.google.android.material.color.DynamicColors;
 
 import android.view.Gravity;
 
@@ -63,8 +65,13 @@ import android.util.Log;
 public class MainActivity extends AppCompatActivity {
     static final boolean DEBUG = false;
 
-    TextView logView;
     NestedScrollView scrollView;
+    private MaterialCardView flashKernelCard;
+    private MaterialCardView backupCard;
+    private MaterialCardView restoreCard;
+    private MaterialCardView backupsCard;
+    private MaterialCardView settingsCard;
+    private MaterialCardView aboutCard;
 
     enum status {
         flashing,
@@ -77,71 +84,181 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // Apply splash screen
-        SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
-        
-        // Set up transitions
-        getWindow().setEnterTransition(new MaterialSharedAxis(MaterialSharedAxis.Z, true));
-        getWindow().setExitTransition(new MaterialSharedAxis(MaterialSharedAxis.Z, false));
-        
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        
-        // Initialize views
-        scrollView = findViewById(R.id.scrollView);
-        logView = findViewById(R.id.logView);
-        
-        // Set up toolbar
-        setSupportActionBar(findViewById(R.id.toolbar));
-        
-        // Set up FAB with animation
-        ExtendedFloatingActionButton fabFlash = findViewById(R.id.fab_flash);
-        fabFlash.setVisibility(View.INVISIBLE); // Hide initially for animation
-        fabFlash.postDelayed(() -> {
-            fabFlash.setVisibility(View.VISIBLE);
-            fabFlash.startAnimation(android.view.animation.AnimationUtils.loadAnimation(this, R.anim.fab_scale_up));
-        }, 500); // Delay for a smoother entry
-        
-        fabFlash.setOnClickListener(v -> {
-            // Add click animation
-            ObjectAnimator scaleDownX = ObjectAnimator.ofFloat(v, "scaleX", 0.9f);
-            ObjectAnimator scaleDownY = ObjectAnimator.ofFloat(v, "scaleY", 0.9f);
-            scaleDownX.setDuration(100);
-            scaleDownY.setDuration(100);
-            AnimatorSet scaleDown = new AnimatorSet();
-            scaleDown.play(scaleDownX).with(scaleDownY);
+        try {
+            // Apply splash screen
+            SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
             
-            ObjectAnimator scaleUpX = ObjectAnimator.ofFloat(v, "scaleX", 1.0f);
-            ObjectAnimator scaleUpY = ObjectAnimator.ofFloat(v, "scaleY", 1.0f);
-            scaleUpX.setDuration(100);
-            scaleUpY.setDuration(100);
-            AnimatorSet scaleUp = new AnimatorSet();
-            scaleUp.play(scaleUpX).with(scaleUpY);
+            // Apply Material You dynamic colors
+            DynamicColors.applyToActivityIfAvailable(this);
             
-            scaleDown.start();
-            scaleDown.addListener(new android.animation.AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationEnd(android.animation.Animator animation) {
-                    scaleUp.start();
-                    flash_new();
+            // Set up transitions
+            getWindow().setEnterTransition(new MaterialSharedAxis(MaterialSharedAxis.Z, true));
+            getWindow().setExitTransition(new MaterialSharedAxis(MaterialSharedAxis.Z, false));
+            
+            super.onCreate(savedInstanceState);
+            setContentView(R.layout.activity_main);
+            
+            // Initialize views with null checks
+            scrollView = findViewById(R.id.scrollView);
+            
+            if (scrollView == null) {
+                // Handle missing ScrollView gracefully
+                setContentView(R.layout.activity_main);
+                scrollView = findViewById(R.id.scrollView);
+                if (scrollView == null) {
+                    Toast.makeText(this, "Error initializing UI", Toast.LENGTH_LONG).show();
+                    finish();
+                    return;
                 }
-            });
+            }
+            
+            flashKernelCard = findViewById(R.id.flash_kernel_card);
+            backupCard = findViewById(R.id.backup_card);
+            restoreCard = findViewById(R.id.restore_card);
+            backupsCard = findViewById(R.id.backups_card);
+            settingsCard = findViewById(R.id.settings_card);
+            aboutCard = findViewById(R.id.about_card);
+            
+            // Set up toolbar
+            setSupportActionBar(findViewById(R.id.toolbar));
+            if (getSupportActionBar() != null) {
+                getSupportActionBar().setTitle(R.string.app_name);
+            }
+            
+            // Initialize status
+            cur_status = status.normal;
+            
+            // Set up click listeners for the buttons
+            setupButtonClickListeners();
+            
+            // Animate the cards entry
+            animateCardsEntry();
+        } catch (Exception e) {
+            // Handle any exception during creation
+            Log.e("HorizonRevamped", "Error during app initialization: " + e.getMessage(), e);
+            Toast.makeText(this, "Error initializing app: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+    
+    private void setupButtonClickListeners() {
+        flashKernelCard.setOnClickListener(v -> {
+            animateCardClick(v);
+            if (cur_status == status.flashing) {
+                Snackbar.make(findViewById(R.id.scrollView), 
+                    R.string.task_running, Snackbar.LENGTH_SHORT).show();
+                return;
+            }
+            
+            // Create a new Worker instance for flashing
+            Worker worker = new Worker(this);
+            file_worker = worker;
+            
+            // Flash new kernel functionality
+            Intent chooserIntent = new Intent(Intent.ACTION_GET_CONTENT);
+            chooserIntent.setType("application/zip");
+            chooserIntent.addCategory(Intent.CATEGORY_OPENABLE);
+            startActivityForResult(Intent.createChooser(chooserIntent, "Select File"), 42);
         });
         
-        // Initialize status
-        cur_status = status.normal;
-        update_title();
+        backupCard.setOnClickListener(v -> {
+            animateCardClick(v);
+            // Backup functionality
+            createManualBackup();
+        });
         
-        // Apply card animation
-        MaterialCardView logCard = findViewById(R.id.log_card);
-        logCard.setAlpha(0f);
-        logCard.setTranslationY(100f);
-        logCard.animate()
-                .alpha(1f)
-                .translationY(0f)
-                .setDuration(500)
-                .setInterpolator(new DecelerateInterpolator())
-                .start();
+        restoreCard.setOnClickListener(v -> {
+            animateCardClick(v);
+            // Restore functionality
+            showRestoreSourceDialog();
+        });
+        
+        backupsCard.setOnClickListener(v -> {
+            animateCardClick(v);
+            // Manage backups functionality
+            showManageBackupsDialog();
+        });
+        
+        settingsCard.setOnClickListener(v -> {
+            animateCardClick(v);
+            // Settings functionality
+            Toast.makeText(this, "Settings", Toast.LENGTH_SHORT).show();
+        });
+        
+        aboutCard.setOnClickListener(v -> {
+            animateCardClick(v);
+            // About functionality
+            showAboutDialog();
+        });
+    }
+    
+    private void animateCardClick(View v) {
+        // Create a more pronounced 3D animation for card clicks
+        AnimatorSet animatorSet = new AnimatorSet();
+        
+        ObjectAnimator scaleDownX = ObjectAnimator.ofFloat(v, "scaleX", 0.95f);
+        ObjectAnimator scaleDownY = ObjectAnimator.ofFloat(v, "scaleY", 0.95f);
+        ObjectAnimator rotateX = ObjectAnimator.ofFloat(v, "rotationX", 10f);
+        ObjectAnimator elevate = ObjectAnimator.ofFloat(v, "translationZ", 12f);
+        
+        animatorSet.playTogether(scaleDownX, scaleDownY, rotateX, elevate);
+        animatorSet.setDuration(100);
+        animatorSet.start();
+        
+        // Return to normal state after a short delay
+        v.postDelayed(() -> {
+            AnimatorSet returnAnimatorSet = new AnimatorSet();
+            ObjectAnimator scaleUpX = ObjectAnimator.ofFloat(v, "scaleX", 1f);
+            ObjectAnimator scaleUpY = ObjectAnimator.ofFloat(v, "scaleY", 1f);
+            ObjectAnimator rotateBackX = ObjectAnimator.ofFloat(v, "rotationX", 0f);
+            ObjectAnimator lowerElevation = ObjectAnimator.ofFloat(v, "translationZ", 4f);
+            
+            returnAnimatorSet.playTogether(scaleUpX, scaleUpY, rotateBackX, lowerElevation);
+            returnAnimatorSet.setDuration(200);
+            returnAnimatorSet.setInterpolator(new OvershootInterpolator());
+            returnAnimatorSet.start();
+        }, 100);
+    }
+    
+    private void animateCardsEntry() {
+        // Get all cards in the layout
+        LinearLayout mainLayout = (LinearLayout) scrollView.getChildAt(0);
+        int childCount = mainLayout.getChildCount();
+        
+        // First, set initial state for all cards
+        for (int i = 0; i < childCount; i++) {
+            View child = mainLayout.getChildAt(i);
+            if (child instanceof MaterialCardView) {
+                child.setAlpha(0f);
+                child.setTranslationY(200f);
+                child.setTranslationZ(0f);
+                child.setRotationX(15f);
+                child.setScaleX(0.8f);
+                child.setScaleY(0.8f);
+            }
+        }
+        
+        // Animate each card with a cascade effect
+        for (int i = 0; i < childCount; i++) {
+            View child = mainLayout.getChildAt(i);
+            if (child instanceof MaterialCardView) {
+                long delay = i * 150L; // 150ms delay between each card
+                
+                AnimatorSet animatorSet = new AnimatorSet();
+                
+                ObjectAnimator fadeIn = ObjectAnimator.ofFloat(child, "alpha", 0f, 1f);
+                ObjectAnimator translateY = ObjectAnimator.ofFloat(child, "translationY", 200f, 0f);
+                ObjectAnimator rotateX = ObjectAnimator.ofFloat(child, "rotationX", 15f, 0f);
+                ObjectAnimator scaleX = ObjectAnimator.ofFloat(child, "scaleX", 0.8f, 1f);
+                ObjectAnimator scaleY = ObjectAnimator.ofFloat(child, "scaleY", 0.8f, 1f);
+                ObjectAnimator elevate = ObjectAnimator.ofFloat(child, "translationZ", 0f, 4f);
+                
+                animatorSet.playTogether(fadeIn, translateY, rotateX, scaleX, scaleY, elevate);
+                animatorSet.setStartDelay(delay);
+                animatorSet.setDuration(400);
+                animatorSet.setInterpolator(new DecelerateInterpolator(1.5f));
+                animatorSet.start();
+            }
+        }
     }
 
     void update_title() {
@@ -170,122 +287,55 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    void flash_new() {
-        if (cur_status == MainActivity.status.flashing) {
-            // Show animated toast instead of regular Toast
-            Snackbar.make(findViewById(R.id.fab_flash), R.string.task_running, Snackbar.LENGTH_SHORT)
-                    .setAnimationMode(Snackbar.ANIMATION_MODE_SLIDE)
-                    .show();
-            return;
-        }
-
-        // Animate log clearing
-        if (logView.getText().length() > 0) {
-            logView.animate()
-                    .alpha(0f)
-                    .setDuration(200)
-                    .withEndAction(() -> {
-                        logView.setText("");
-                        logView.animate().alpha(1f).setDuration(200).start();
-                    })
-                    .start();
-        } else {
-            logView.setText("");
-        }
-        
-        cur_status = status.normal;
-        update_title();
-        
-        // Show animated message
-        Snackbar.make(findViewById(R.id.fab_flash), R.string.please_select_kzip, Snackbar.LENGTH_LONG)
-                .setAnimationMode(Snackbar.ANIMATION_MODE_SLIDE)
-                .show();
-                
-        runWithFilePath(this, new Worker(this));
-    }
-
     @Override
     public void onBackPressed() {
-        if (cur_status != status.flashing) {
-            // Add exit animation
-            findViewById(R.id.log_card).startAnimation(
-                    android.view.animation.AnimationUtils.loadAnimation(this, R.anim.fade_out));
-            findViewById(R.id.fab_flash).startAnimation(
-                    android.view.animation.AnimationUtils.loadAnimation(this, R.anim.fab_scale_down));
-            
-            // Delay the actual back action to allow animations to play
-            new android.os.Handler().postDelayed(() -> super.onBackPressed(), 200);
-        } else {
-            // Show message that flashing is in progress
-            Snackbar.make(findViewById(R.id.fab_flash), R.string.task_running, Snackbar.LENGTH_SHORT)
-                    .setAnimationMode(Snackbar.ANIMATION_MODE_SLIDE)
-                    .show();
+        // Add exit animation with 3D effect
+        LinearLayout mainLayout = (LinearLayout) scrollView.getChildAt(0);
+        int childCount = mainLayout.getChildCount();
+        
+        for (int i = 0; i < childCount; i++) {
+            View child = mainLayout.getChildAt(i);
+            if (child instanceof MaterialCardView) {
+                long delay = i * 50L;
+                
+                AnimatorSet animatorSet = new AnimatorSet();
+                
+                ObjectAnimator fadeOut = ObjectAnimator.ofFloat(child, "alpha", 1f, 0f);
+                ObjectAnimator translateY = ObjectAnimator.ofFloat(child, "translationY", 0f, 100f);
+                ObjectAnimator rotateX = ObjectAnimator.ofFloat(child, "rotationX", 0f, 20f);
+                ObjectAnimator scaleX = ObjectAnimator.ofFloat(child, "scaleX", 1f, 0.8f);
+                ObjectAnimator scaleY = ObjectAnimator.ofFloat(child, "scaleY", 1f, 0.8f);
+                
+                animatorSet.playTogether(fadeOut, translateY, rotateX, scaleX, scaleY);
+                animatorSet.setStartDelay(delay);
+                animatorSet.setDuration(300);
+                animatorSet.setInterpolator(new AccelerateInterpolator(1.5f));
+                animatorSet.start();
+            }
         }
+        
+        // Delay the actual back action to allow animations to play
+        new android.os.Handler().postDelayed(() -> super.onBackPressed(), 400);
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return super.onCreateOptionsMenu(menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.flash_new) {
-            Intent chooserIntent = new Intent(Intent.ACTION_GET_CONTENT);
-            chooserIntent.setType("application/zip");
-            chooserIntent.addCategory(Intent.CATEGORY_OPENABLE);
-            startActivityForResult(Intent.createChooser(chooserIntent, "Select File"), 42);
-        } else if (item.getItemId() == R.id.create_backup) {
-            createManualBackup();
-        } else if (item.getItemId() == R.id.restore_backup) {
-            showRestoreSourceDialog();
-        } else if (item.getItemId() == R.id.manage_backups) {
-            showManageBackupsDialog();
-        } else if (item.getItemId() == R.id.about) {
-            showAboutDialog();
-        }
-        return true;
+        // Don't inflate the menu to remove the 3-dot menu
+        return false;
     }
 
     public static void _appendLog(String log, Activity activity) {
         activity.runOnUiThread(() -> {
-            TextView logView = ((MainActivity) activity).logView;
-            NestedScrollView scrollView = ((MainActivity) activity).scrollView;
-            
-            // Animate new log entries
-            int startPosition = logView.getText().length();
-            logView.append(log + "\n");
-            int endPosition = logView.getText().length();
-            
-            if (android.text.Spannable.class.isAssignableFrom(logView.getText().getClass())) {
-                android.text.Spannable spannable = (android.text.Spannable) logView.getText();
-                android.text.style.ForegroundColorSpan highlightSpan = new android.text.style.ForegroundColorSpan(
-                        activity.getResources().getColor(R.color.md_theme_light_primary));
-                spannable.setSpan(highlightSpan, startPosition, endPosition, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                
-                // Remove highlight after a delay
-                new android.os.Handler().postDelayed(() -> {
-                    try {
-                        spannable.removeSpan(highlightSpan);
-                    } catch (Exception e) {
-                        // Ignore if span was already removed
-                    }
-                }, 1500);
+            if (activity instanceof MainActivity) {
+                // In our new UI, we don't have a log view, so just show a toast with the log message
+                Toast.makeText(activity, log, Toast.LENGTH_SHORT).show();
             }
-            
-            scrollView.fullScroll(View.FOCUS_DOWN);
         });
     }
 
     public static void appendLog(String log, Activity activity) {
-        if (DEBUG) {
-            _appendLog(log, activity);
-            return;
-        }
-        if (!log.startsWith("ui_print"))
-            return;
-        log = log.replace("ui_print", "");
+        if (DEBUG)
+            Log.d("HKF", log);
         _appendLog(log, activity);
     }
 
@@ -305,21 +355,42 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == Activity.RESULT_OK) {
-            file_worker.uri = data.getData();
-            if (file_worker != null) {
+        try {
+            super.onActivityResult(requestCode, resultCode, data);
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                // Make sure file_worker is initialized to avoid NullPointerException
+                if (file_worker == null) {
+                    Toast.makeText(this, "Error: operation not initialized properly", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                
+                Uri dataUri = data.getData();
+                if (dataUri == null) {
+                    Toast.makeText(this, "Error: no file selected", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                
+                file_worker.uri = dataUri;
+                
                 // Check if file is a ZIP file first
-                if (isValidZipFile(data.getData())) {
-                    file_worker.start();
+                if (isValidZipFile(dataUri)) {
+                    try {
+                        file_worker.start();
+                    } catch (Exception e) {
+                        Log.e("HorizonRevamped", "Error starting worker thread: " + e.getMessage(), e);
+                        Toast.makeText(this, "Error starting process: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
                     file_worker = null;
                 } else {
                     // Show error message if not a valid file
-                    Snackbar.make(findViewById(R.id.fab_flash), R.string.invalid_zip_file, Snackbar.LENGTH_LONG)
+                    Snackbar.make(findViewById(R.id.scrollView), R.string.invalid_zip_file, Snackbar.LENGTH_LONG)
                             .setAnimationMode(Snackbar.ANIMATION_MODE_SLIDE)
                             .show();
                 }
             }
+        } catch (Exception e) {
+            Log.e("HorizonRevamped", "Error in activity result: " + e.getMessage(), e);
+            Toast.makeText(this, "Error processing selected file: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
     
@@ -371,18 +442,22 @@ public class MainActivity extends AppCompatActivity {
     // Handle manually creating a backup
     private void createManualBackup() {
         if (cur_status == status.flashing) {
-            Snackbar.make(findViewById(R.id.fab_flash), 
+            Snackbar.make(findViewById(R.id.scrollView), 
                 R.string.unable_process_ongoing, Snackbar.LENGTH_LONG).show();
             return;
         }
         
-        // Check for storage permission first
+        // Check storage permission first
         if (!checkStoragePermission()) {
+            Snackbar.make(findViewById(R.id.scrollView), R.string.storage_permission_required, Snackbar.LENGTH_LONG)
+                    .setAction(R.string.grant, v -> {
+                        requestStoragePermission();
+                    })
+                    .show();
             return;
         }
         
         // Clear logs and show progress message
-        logView.setText("");
         _appendLog(getString(R.string.backup_progress), this);
         
         // Create and show partition selection dialog
@@ -454,7 +529,7 @@ public class MainActivity extends AppCompatActivity {
                                 R.string.backup_complete : 
                                 R.string.backup_partial_error;
                                 
-                            Snackbar.make(findViewById(R.id.fab_flash), 
+                            Snackbar.make(findViewById(R.id.scrollView), 
                                 messageResId, Snackbar.LENGTH_LONG).show();
                         });
                     }
@@ -470,7 +545,7 @@ public class MainActivity extends AppCompatActivity {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             // For Android 11+, check for managed storage permission
             if (!android.os.Environment.isExternalStorageManager()) {
-                Snackbar.make(findViewById(R.id.fab_flash), 
+                Snackbar.make(findViewById(R.id.scrollView), 
                     R.string.storage_permission_required, Snackbar.LENGTH_LONG)
                     .setAction("Settings", v -> {
                         Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
@@ -488,15 +563,20 @@ public class MainActivity extends AppCompatActivity {
                     android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != 
                     android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 
-                androidx.core.app.ActivityCompat.requestPermissions(this,
-                    new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                    1001);
+                requestStoragePermission();
                 return false;
             }
             return true;
         }
     }
     
+    // Request storage permission for Android 10 and below
+    private void requestStoragePermission() {
+        androidx.core.app.ActivityCompat.requestPermissions(this,
+            new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
+            1001);
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -513,7 +593,7 @@ public class MainActivity extends AppCompatActivity {
     // Show dialog to select restore source
     private void showRestoreSourceDialog() {
         if (cur_status == status.flashing) {
-            Snackbar.make(findViewById(R.id.fab_flash), 
+            Snackbar.make(findViewById(R.id.scrollView), 
                 R.string.unable_process_ongoing, Snackbar.LENGTH_LONG).show();
             return;
         }
@@ -679,13 +759,12 @@ public class MainActivity extends AppCompatActivity {
     // Perform the actual restore process
     private void performRestore(File backupFolder, String[] selectedPartitions) {
         if (cur_status == status.flashing) {
-            Snackbar.make(findViewById(R.id.fab_flash), 
+            Snackbar.make(findViewById(R.id.scrollView), 
                 R.string.unable_process_ongoing, Snackbar.LENGTH_LONG).show();
             return;
         }
         
         // Clear logs and show progress message
-        logView.setText("");
         _appendLog(getString(R.string.restoring), this);
         
         // Show progress dialog
@@ -719,7 +798,7 @@ public class MainActivity extends AppCompatActivity {
                         R.string.restore_complete : 
                         R.string.restore_partial_error;
                         
-                    Snackbar.make(findViewById(R.id.fab_flash), 
+                    Snackbar.make(findViewById(R.id.scrollView), 
                         messageResId, Snackbar.LENGTH_LONG).show();
                 });
             }
@@ -782,7 +861,7 @@ public class MainActivity extends AppCompatActivity {
     // Show dialog to manage backups
     private void showManageBackupsDialog() {
         if (cur_status == status.flashing) {
-            Snackbar.make(findViewById(R.id.fab_flash), 
+            Snackbar.make(findViewById(R.id.scrollView), 
                 R.string.unable_process_ongoing, Snackbar.LENGTH_LONG).show();
             return;
         }
@@ -844,7 +923,7 @@ public class MainActivity extends AppCompatActivity {
                     
                     if (items.length == 0) {
                         // No backups found
-                        Snackbar.make(findViewById(R.id.fab_flash),
+                        Snackbar.make(findViewById(R.id.scrollView),
                             R.string.no_backups_found, Snackbar.LENGTH_LONG).show();
                         return;
                     }
@@ -862,7 +941,7 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
                 runOnUiThread(() -> {
                     loadingDialog.dismiss();
-                    Snackbar.make(findViewById(R.id.fab_flash),
+                    Snackbar.make(findViewById(R.id.scrollView),
                         "Error scanning backups: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
                 });
             }
@@ -947,7 +1026,7 @@ public class MainActivity extends AppCompatActivity {
                     e.printStackTrace();
                     runOnUiThread(() -> {
                         loadingDialog.dismiss();
-                        Snackbar.make(findViewById(R.id.fab_flash),
+                        Snackbar.make(findViewById(R.id.scrollView),
                             "Error loading backup details: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
                     });
                 }
@@ -955,7 +1034,7 @@ public class MainActivity extends AppCompatActivity {
             
         } catch (Exception e) {
             e.printStackTrace();
-            Snackbar.make(findViewById(R.id.fab_flash),
+            Snackbar.make(findViewById(R.id.scrollView),
                 "Error: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
         }
     }
@@ -991,7 +1070,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 
                 if (selectedPartitions.isEmpty()) {
-                    Snackbar.make(findViewById(R.id.fab_flash),
+                    Snackbar.make(findViewById(R.id.scrollView),
                         R.string.no_partitions_selected, Snackbar.LENGTH_LONG).show();
                     return;
                 }
@@ -1024,17 +1103,17 @@ public class MainActivity extends AppCompatActivity {
                             progressDialog.dismiss();
                             
                             if (success) {
-                                Snackbar.make(findViewById(R.id.fab_flash),
+                                Snackbar.make(findViewById(R.id.scrollView),
                                     R.string.backup_deleted, Snackbar.LENGTH_LONG).show();
                             } else {
-                                Snackbar.make(findViewById(R.id.fab_flash),
+                                Snackbar.make(findViewById(R.id.scrollView),
                                     R.string.backup_delete_failed, Snackbar.LENGTH_LONG).show();
                             }
                         });
                     }).start();
                 } catch (Exception e) {
                     e.printStackTrace();
-                    Snackbar.make(findViewById(R.id.fab_flash),
+                    Snackbar.make(findViewById(R.id.scrollView),
                         "Error: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
                 }
             })

@@ -5,19 +5,23 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
+    android:background="?attr/colorSurface"
     tools:context=".MainActivity">
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appbar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fitsSystemWindows="true">
+        android:fitsSystemWindows="true"
+        android:background="?attr/colorSurface">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:title="@string/app_name" />
+            app:title="@string/app_name"
+            app:titleTextColor="?attr/colorOnSurface"
+            app:elevation="0dp" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -25,6 +29,7 @@
         android:id="@+id/scrollView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="?attr/colorSurface"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
@@ -33,38 +38,224 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <!-- FLASH KERNEL Button -->
             <com.google.android.material.card.MaterialCardView
-                android:id="@+id/log_card"
+                android:id="@+id/flash_kernel_card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="6dp"
-                app:strokeColor="?attr/colorPrimary"
-                app:strokeWidth="1dp">
+                app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="4dp"
+                android:stateListAnimator="@animator/card_state_list_anim">
 
-                <TextView
-                    android:id="@+id/logView"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:minHeight="250dp"
-                    android:padding="16dp"
-                    android:textIsSelectable="true"
-                    android:fontFamily="monospace" />
+                    android:orientation="horizontal"
+                    android:padding="20dp">
 
+                    <ImageView
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_gravity="center_vertical"
+                        android:src="@android:drawable/ic_menu_upload"
+                        app:tint="?attr/colorOnPrimaryContainer" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginStart="32dp"
+                        android:text="FLASH KERNEL"
+                        android:textColor="?attr/colorOnPrimaryContainer"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- BACKUP Button -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/backup_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardBackgroundColor="?attr/colorSecondaryContainer"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="4dp"
+                android:stateListAnimator="@animator/card_state_list_anim">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="20dp">
+
+                    <ImageView
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_gravity="center_vertical"
+                        android:src="@android:drawable/ic_menu_save"
+                        app:tint="?attr/colorOnSecondaryContainer" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginStart="32dp"
+                        android:text="BACKUP"
+                        android:textColor="?attr/colorOnSecondaryContainer"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- RESTORE Button -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/restore_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardBackgroundColor="?attr/colorTertiaryContainer"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="4dp"
+                android:stateListAnimator="@animator/card_state_list_anim">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="20dp">
+
+                    <ImageView
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_gravity="center_vertical"
+                        android:src="@android:drawable/ic_menu_rotate"
+                        app:tint="?attr/colorOnTertiaryContainer" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginStart="32dp"
+                        android:text="RESTORE"
+                        android:textColor="?attr/colorOnTertiaryContainer"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- BACKUPS Button (replacing both MANAGE and BACKUPS) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/backups_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardBackgroundColor="?attr/colorErrorContainer"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="4dp"
+                android:stateListAnimator="@animator/card_state_list_anim">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="20dp">
+
+                    <ImageView
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_gravity="center_vertical"
+                        android:src="@android:drawable/ic_menu_my_calendar"
+                        app:tint="?attr/colorOnErrorContainer" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginStart="32dp"
+                        android:text="MANAGE BACKUPS"
+                        android:textColor="?attr/colorOnErrorContainer"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- SETTINGS Button -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/settings_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="4dp"
+                android:stateListAnimator="@animator/card_state_list_anim">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="20dp">
+
+                    <ImageView
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_gravity="center_vertical"
+                        android:src="@android:drawable/ic_menu_preferences"
+                        app:tint="?attr/colorOnSurfaceVariant" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginStart="32dp"
+                        android:text="SETTINGS"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ABOUT Button -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/about_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardBackgroundColor="?attr/colorPrimary"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="4dp"
+                android:stateListAnimator="@animator/card_state_list_anim">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="20dp">
+
+                    <ImageView
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_gravity="center_vertical"
+                        android:src="@android:drawable/ic_menu_info_details"
+                        app:tint="?attr/colorOnPrimary" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginStart="32dp"
+                        android:text="ABOUT"
+                        android:textColor="?attr/colorOnPrimary"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>
 
     </androidx.core.widget.NestedScrollView>
-
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/fab_flash"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
-        android:text="@string/flash_new"
-        app:icon="@android:drawable/ic_menu_upload" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

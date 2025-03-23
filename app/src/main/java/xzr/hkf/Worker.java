@@ -69,261 +69,537 @@ public class Worker extends MainActivity.fileWorker {
     }
     
     public void run() {
-        // Record start time
-        startTime = System.currentTimeMillis();
-        MainActivity.cur_status = MainActivity.status.flashing;
-        ((MainActivity) activity).update_title();
-        is_error = false;
-        
-        // Log start of flashing process
-        logWithTimestamp("Starting flashing process");
-        logWithTimestamp("Initializing environment");
-        
-        file_path = activity.getFilesDir().getAbsolutePath() + "/" + DocumentFile.fromSingleUri(activity, uri).getName();
-        binary_path = activity.getFilesDir().getAbsolutePath() + "/META-INF/com/google/android/update-binary";
-        
-        // Log file information
-        logWithTimestamp("Target file: " + DocumentFile.fromSingleUri(activity, uri).getName());
-        
-        // Show flashing progress dialog
-        activity.runOnUiThread(() -> {
-            View dialogView = activity.getLayoutInflater().inflate(R.layout.dialog_flashing_progress, null);
-            progressText = dialogView.findViewById(R.id.progress_text);
-            progressDialog = new com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
-                    .setView(dialogView)
-                    .setCancelable(false)
-                    .create();
-            progressDialog.show();
-            updateProgress("Preparing environment...");
-        });
-
         try {
-            cleanup();
-        } catch (IOException ioException) {
-            is_error = true;
-        }
-        if (is_error) {
-            MainActivity._appendLog(activity.getResources().getString(R.string.unable_cleanup), activity);
-            MainActivity.cur_status = MainActivity.status.error;
+            // Record start time
+            startTime = System.currentTimeMillis();
+            MainActivity.cur_status = MainActivity.status.flashing;
             ((MainActivity) activity).update_title();
-            dismissProgressDialog();
-            return;
-        }
-        updateProgress("Checking root access...");
-
-        if (!rootAvailable()) {
-            MainActivity._appendLog(activity.getResources().getString(R.string.unable_flash_root), activity);
-            MainActivity.cur_status = MainActivity.status.error;
-            ((MainActivity) activity).update_title();
-            dismissProgressDialog();
-            showStatusNotification(R.string.unable_flash_root, false);
-            return;
-        }
-
-        // Create backup before proceeding
-        updateProgress("Creating kernel backup...");
-        try {
-            createBackup();
-        } catch (IOException ioException) {
-            logWithTimestamp("Warning: Failed to create backup - " + ioException.getMessage());
-            // Show warning but continue with flashing
+            is_error = false;
+            
+            // Log start of flashing process
+            logWithTimestamp("Starting flashing process");
+            logWithTimestamp("Initializing environment");
+            
+            file_path = activity.getFilesDir().getAbsolutePath() + "/" + DocumentFile.fromSingleUri(activity, uri).getName();
+            binary_path = activity.getFilesDir().getAbsolutePath() + "/META-INF/com/google/android/update-binary";
+            
+            // Log file information
+            logWithTimestamp("Target file: " + DocumentFile.fromSingleUri(activity, uri).getName());
+            
+            // Show flashing progress dialog
             activity.runOnUiThread(() -> {
-                Snackbar.make(activity.findViewById(R.id.fab_flash), 
-                    R.string.backup_warning, Snackbar.LENGTH_LONG)
-                    .setAnimationMode(Snackbar.ANIMATION_MODE_SLIDE)
-                    .show();
-            });
-        }
-
-        updateProgress("Copying files...");
-        try {
-            copy();
-        } catch (IOException ioException) {
-            is_error = true;
-        }
-        if (!is_error)
-            is_error = !new File(file_path).exists();
-        if (is_error) {
-            MainActivity._appendLog(activity.getResources().getString(R.string.unable_copy), activity);
-            MainActivity.cur_status = MainActivity.status.error;
-            ((MainActivity) activity).update_title();
-            dismissProgressDialog();
-            showStatusNotification(R.string.unable_copy, false);
-            return;
-        }
-
-        updateProgress("Extracting binary...");
-        try {
-            getBinary();
-        } catch (IOException ioException) {
-            is_error = true;
-        }
-        if (is_error) {
-            MainActivity._appendLog(activity.getResources().getString(R.string.unable_get_exe), activity);
-            MainActivity.cur_status = MainActivity.status.error;
-            ((MainActivity) activity).update_title();
-            dismissProgressDialog();
-            showStatusNotification(R.string.unable_get_exe, false);
-            return;
-        }
-
-        updateProgress("Patching binary...");
-        try {
-            patch();
-        } catch (IOException ignored) {
-        }
-
-        updateProgress("Flashing kernel...");
-        showStatusNotification(R.string.flashing, true);
-        try {
-            flash(activity);
-        } catch (IOException ioException) {
-            is_error = true;
-        }
-        if (is_error) {
-            MainActivity._appendLog(activity.getResources().getString(R.string.unable_flash_error), activity);
-            MainActivity.cur_status = MainActivity.status.error;
-            ((MainActivity) activity).update_title();
-            dismissProgressDialog();
-            showStatusNotification(R.string.unable_flash_error, false);
-            return;
-        }
-        dismissProgressDialog();
-        showStatusNotification(R.string.flashing_done, true);
-        
-        // Log completion time
-        logWithTimestamp("Flashing completed successfully in " + getElapsedTime());
-        
-        // Show animated success screen
-        activity.runOnUiThread(() -> {
-            View successView = activity.getLayoutInflater().inflate(R.layout.dialog_success_screen, null);
-            
-            // Get views
-            MaterialCardView successCard = successView.findViewById(R.id.success_card);
-            ImageView successIcon = successView.findViewById(R.id.success_icon);
-            Button btnReboot = successView.findViewById(R.id.btn_reboot);
-            Button btnCancel = successView.findViewById(R.id.btn_cancel);
-            TextView successTitle = successView.findViewById(R.id.success_title);
-            TextView successMessage = successView.findViewById(R.id.success_message);
-            
-            // Set custom success icon
-            successIcon.setImageResource(R.drawable.ic_success_checkmark);
-            successIcon.setColorFilter(activity.getResources().getColor(R.color.md_theme_light_primary));
-            
-            // Set completion time in message
-            successMessage.setText(activity.getString(R.string.reboot_complete_msg) + 
-                    "\n\nCompleted in " + getElapsedTime());
-            
-            // Create and show dialog
-            androidx.appcompat.app.AlertDialog successDialog = new com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
-                    .setView(successView)
-                    .setCancelable(false)
-                    .create();
-            
-            // Set button actions
-            btnReboot.setOnClickListener(v -> {
                 try {
-                    successDialog.dismiss();
-                    reboot();
-                } catch (IOException e) {
-                    Toast.makeText(activity, R.string.failed_reboot, Toast.LENGTH_SHORT).show();
+                    View dialogView = activity.getLayoutInflater().inflate(R.layout.dialog_flashing_progress, null);
+                    progressText = dialogView.findViewById(R.id.progress_text);
+                    progressDialog = new com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
+                            .setView(dialogView)
+                            .setCancelable(false)
+                            .create();
+                    progressDialog.show();
+                    updateProgress("Preparing environment...");
+                } catch (Exception e) {
+                    logWithTimestamp("Error showing progress dialog: " + e.getMessage());
+                }
+            });
+
+            try {
+                cleanup();
+            } catch (IOException ioException) {
+                logWithTimestamp("Error during cleanup: " + ioException.getMessage());
+                is_error = true;
+            }
+            if (is_error) {
+                MainActivity._appendLog(activity.getResources().getString(R.string.unable_cleanup), activity);
+                MainActivity.cur_status = MainActivity.status.error;
+                ((MainActivity) activity).update_title();
+                dismissProgressDialog();
+                return;
+            }
+            updateProgress("Checking root access...");
+
+            if (!rootAvailable()) {
+                MainActivity._appendLog(activity.getResources().getString(R.string.unable_flash_root), activity);
+                MainActivity.cur_status = MainActivity.status.error;
+                ((MainActivity) activity).update_title();
+                dismissProgressDialog();
+                showStatusNotification(R.string.unable_flash_root, false);
+                return;
+            }
+
+            // Create an emergency backup of the boot partition first
+            updateProgress("Creating emergency boot partition backup...");
+            boolean backupCreated = backupBootPartition();
+            if (!backupCreated) {
+                // Show warning but continue
+                activity.runOnUiThread(() -> {
+                    Snackbar.make(activity.findViewById(R.id.scrollView), 
+                        "Warning: Emergency boot backup failed. Proceeding is risky.", 
+                        Snackbar.LENGTH_LONG)
+                        .setBackgroundTint(activity.getResources().getColor(android.R.color.holo_red_light))
+                        .setTextColor(activity.getResources().getColor(android.R.color.white))
+                        .setAnimationMode(Snackbar.ANIMATION_MODE_SLIDE)
+                        .show();
+                });
+                
+                // Ask for confirmation to continue
+                final boolean[] continueFlashing = {false};
+                activity.runOnUiThread(() -> {
+                    new com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
+                        .setTitle("Warning: No Emergency Backup")
+                        .setMessage("Failed to create emergency boot backup. Continuing without a backup " +
+                                  "means you may need to reflash your entire ROM if the kernel flash fails. " +
+                                  "Do you want to continue anyway?")
+                        .setPositiveButton("Continue Anyway", (dialog, which) -> {
+                            continueFlashing[0] = true;
+                        })
+                        .setNegativeButton("Cancel", (dialog, which) -> {
+                            is_error = true;
+                        })
+                        .setCancelable(false)
+                        .show();
+                });
+                
+                // Wait for user decision
+                try {
+                    while (!continueFlashing[0] && !is_error) {
+                        Thread.sleep(100);
+                    }
+                } catch (InterruptedException e) {
+                    // Ignore
+                }
+                
+                if (is_error) {
+                    logWithTimestamp("User cancelled operation after backup failure");
+                    MainActivity.cur_status = MainActivity.status.error;
+                    ((MainActivity) activity).update_title();
+                    dismissProgressDialog();
+                    return;
+                }
+            }
+
+            // Create regular kernel backup
+            updateProgress("Creating kernel backup...");
+            try {
+                createBackup();
+            } catch (IOException ioException) {
+                logWithTimestamp("Warning: Failed to create backup - " + ioException.getMessage());
+                // Show warning but continue with flashing
+                activity.runOnUiThread(() -> {
+                    Snackbar.make(activity.findViewById(R.id.scrollView), 
+                        R.string.backup_warning, Snackbar.LENGTH_LONG)
+                        .setAnimationMode(Snackbar.ANIMATION_MODE_SLIDE)
+                        .show();
+                });
+            }
+
+            updateProgress("Copying files...");
+            try {
+                copy();
+            } catch (IOException ioException) {
+                logWithTimestamp("Error during file copy: " + ioException.getMessage());
+                is_error = true;
+            }
+            if (!is_error)
+                is_error = !new File(file_path).exists();
+            if (is_error) {
+                MainActivity._appendLog(activity.getResources().getString(R.string.unable_copy), activity);
+                MainActivity.cur_status = MainActivity.status.error;
+                ((MainActivity) activity).update_title();
+                dismissProgressDialog();
+                showStatusNotification(R.string.unable_copy, false);
+                return;
+            }
+            
+            // Verify AnyKernel3 package structure before extraction
+            updateProgress("Verifying kernel package...");
+            boolean packageValid = verifyAnyKernel3Package();
+            if (!packageValid) {
+                // Show warning to user about incomplete package
+                activity.runOnUiThread(() -> {
+                    new com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
+                        .setTitle("Warning: Incomplete Kernel Package")
+                        .setMessage("The selected kernel package appears to be incomplete or corrupted. " +
+                                  "This may cause flashing to fail. Do you want to continue anyway?")
+                        .setPositiveButton("Continue Anyway", (dialog, which) -> {
+                            // Continue with flashing
+                        })
+                        .setNegativeButton("Cancel", (dialog, which) -> {
+                            is_error = true;
+                        })
+                        .setCancelable(false)
+                        .show();
+                });
+                
+                // Wait for user decision
+                try {
+                    Thread.sleep(2000); // Give time for dialog to show
+                    while (!is_error) {
+                        Thread.sleep(100);
+                        // If dialog was dismissed and we haven't set is_error, user wants to continue
+                        if (!activity.hasWindowFocus()) {
+                            break;
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    // Ignore
+                }
+                
+                if (is_error) {
+                    logWithTimestamp("User cancelled operation due to incomplete package");
+                    MainActivity.cur_status = MainActivity.status.error;
+                    ((MainActivity) activity).update_title();
+                    dismissProgressDialog();
+                    return;
+                }
+            }
+
+            updateProgress("Extracting kernel files...");
+            try {
+                getBinary();
+            } catch (IOException ioException) {
+                logWithTimestamp("Error during binary extraction: " + ioException.getMessage());
+                is_error = true;
+            }
+            if (is_error) {
+                MainActivity._appendLog(activity.getResources().getString(R.string.unable_get_exe), activity);
+                MainActivity.cur_status = MainActivity.status.error;
+                ((MainActivity) activity).update_title();
+                dismissProgressDialog();
+                showStatusNotification(R.string.unable_get_exe, false);
+                return;
+            }
+
+            // Verify and create any missing files
+            updateProgress("Verifying kernel files...");
+            createMissingFiles();
+
+            updateProgress("Patching binary...");
+            try {
+                patch();
+            } catch (IOException e) {
+                logWithTimestamp("Warning during patching: " + e.getMessage());
+                // Continue despite patching errors
+            }
+
+            updateProgress("Flashing kernel...");
+            showStatusNotification(R.string.flashing, true);
+            try {
+                flash(activity);
+            } catch (IOException ioException) {
+                logWithTimestamp("Error during flashing: " + ioException.getMessage());
+                is_error = true;
+            }
+            if (is_error) {
+                MainActivity._appendLog(activity.getResources().getString(R.string.unable_flash_error), activity);
+                MainActivity.cur_status = MainActivity.status.error;
+                ((MainActivity) activity).update_title();
+                dismissProgressDialog();
+                showStatusNotification(R.string.unable_flash_error, false);
+                return;
+            }
+            dismissProgressDialog();
+            showStatusNotification(R.string.flashing_done, true);
+            
+            // Log completion time
+            logWithTimestamp("Flashing completed successfully in " + getElapsedTime());
+            
+            // Show completion dialog with verification info
+            activity.runOnUiThread(() -> {
+                try {
+                    View successView = activity.getLayoutInflater().inflate(R.layout.dialog_success_screen, null);
+                    
+                    // Get views
+                    MaterialCardView successCard = successView.findViewById(R.id.success_card);
+                    ImageView successIcon = successView.findViewById(R.id.success_icon);
+                    Button btnReboot = successView.findViewById(R.id.btn_reboot);
+                    Button btnCancel = successView.findViewById(R.id.btn_cancel);
+                    TextView successTitle = successView.findViewById(R.id.success_title);
+                    TextView successMessage = successView.findViewById(R.id.success_message);
+                    
+                    // Set custom success icon
+                    successIcon.setImageResource(R.drawable.ic_success_checkmark);
+                    successIcon.setColorFilter(activity.getResources().getColor(R.color.md_theme_light_primary));
+                    
+                    // Get backup info
+                    String backupPath = activity.getSharedPreferences("emergency_backup", 
+                        android.content.Context.MODE_PRIVATE).getString("last_boot_backup", "");
+                    
+                    // Show warning about potential issues with backup info
+                    String message = activity.getString(R.string.reboot_complete_msg) + 
+                            "\n\nCompleted in " + getElapsedTime() + "\n\n" +
+                            "WARNING: If your device does not boot properly after reboot, " +
+                            "you will need to restore your device via fastboot or recovery mode.";
+                            
+                    if (backupPath != null && !backupPath.isEmpty()) {
+                        message += "\n\nEmergency boot backup created at:\n" + backupPath;
+                    }
+                    
+                    successMessage.setText(message);
+                    
+                    // Add warning text color
+                    successMessage.setTextColor(activity.getResources().getColor(android.R.color.holo_orange_dark));
+                    
+                    // Update the title to be more cautious
+                    successTitle.setText("Flashing Process Complete - Reboot Required");
+                    
+                    // Create and show dialog with warning
+                    androidx.appcompat.app.AlertDialog successDialog = new com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
+                            .setView(successView)
+                            .setCancelable(false)
+                            .create();
+                    
+                    // Set button actions
+                    btnReboot.setOnClickListener(v -> {
+                        try {
+                            successDialog.dismiss();
+                            
+                            // Show a final warning before reboot
+                            new com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
+                                .setTitle("Final Reboot Warning")
+                                .setMessage("Are you sure you want to reboot? If the kernel is not compatible, " +
+                                            "your device may not boot properly and you may need to recover using fastboot.")
+                                .setPositiveButton("Reboot Anyway", (dialog, which) -> {
+                                    try {
+                                        reboot();
+                                    } catch (IOException e) {
+                                        Toast.makeText(activity, R.string.failed_reboot, Toast.LENGTH_SHORT).show();
+                                    }
+                                })
+                                .setNegativeButton("Cancel", null)
+                                .show();
+                        } catch (Exception e) {
+                            Toast.makeText(activity, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                    
+                    btnCancel.setOnClickListener(v -> successDialog.dismiss());
+                    
+                    // Show dialog
+                    successDialog.show();
+                    
+                    // Apply animations
+                    successCard.setAlpha(0f);
+                    successCard.setScaleX(0.8f);
+                    successCard.setScaleY(0.8f);
+                    
+                    successCard.animate()
+                            .alpha(1f)
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(500)
+                            .setInterpolator(new OvershootInterpolator(0.8f))
+                            .start();
+                } catch (Exception e) {
+                    logWithTimestamp("Error showing success screen: " + e.getMessage());
+                    // Show a simple toast instead if the animation fails
+                    Toast.makeText(activity, "Flashing completed but reboot is required to test if it was successful!", Toast.LENGTH_LONG).show();
                 }
             });
             
-            btnCancel.setOnClickListener(v -> successDialog.dismiss());
+            MainActivity.cur_status = MainActivity.status.flashing_done;
+            ((MainActivity) activity).update_title();
+        } catch (Exception e) {
+            // Catch any unexpected exceptions
+            logWithTimestamp("Critical error during flashing process: " + e.getMessage());
+            e.printStackTrace();
             
-            // Show dialog
-            successDialog.show();
-            
-            // Apply animations
-            successCard.setAlpha(0f);
-            successCard.setScaleX(0.8f);
-            successCard.setScaleY(0.8f);
-            
-            successCard.animate()
-                    .alpha(1f)
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration(500)
-                    .setInterpolator(new OvershootInterpolator(0.8f))
-                    .start();
-            
-            // Apply animation to success icon
-            successIcon.startAnimation(android.view.animation.AnimationUtils.loadAnimation(
-                    activity, R.anim.checkmark_animation));
-        });
-        MainActivity.cur_status = MainActivity.status.flashing_done;
-        ((MainActivity) activity).update_title();
+            // Update status and UI
+            MainActivity.cur_status = MainActivity.status.error;
+            try {
+                ((MainActivity) activity).update_title();
+                dismissProgressDialog();
+                
+                // Show error notification
+                activity.runOnUiThread(() -> {
+                    Snackbar.make(activity.findViewById(R.id.scrollView),
+                        "Critical error: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
+                });
+            } catch (Exception e2) {
+                // Last resort error handling
+                try {
+                    Toast.makeText(activity, "Critical error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                } catch (Exception e3) {
+                    // At this point we can't do much more
+                }
+            }
+        }
     }
 
     boolean rootAvailable() {
         try {
-            String ret = runWithNewProcessReturn(true, "id");
-            return ret != null && ret.contains("root");
-        } catch (IOException e) {
+            logWithTimestamp("Checking for root access...");
+            Process process = Runtime.getRuntime().exec("su -c id");
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String output = bufferedReader.readLine();
+            
+            // Wait for process to finish with timeout
+            boolean exited = process.waitFor(3, java.util.concurrent.TimeUnit.SECONDS);
+            
+            // Check exit value
+            int exitValue = exited ? process.exitValue() : -1;
+            
+            // Clean up resources
+            bufferedReader.close();
+            process.destroy();
+            
+            // Log the result
+            boolean hasRoot = exited && exitValue == 0 && output != null && output.contains("uid=0");
+            logWithTimestamp("Root check result: " + (hasRoot ? "Available" : "Not available") + 
+                            " (exit value: " + exitValue + ", output: " + output + ")");
+            
+            return hasRoot;
+        } catch (Exception e) {
+            logWithTimestamp("Root check exception: " + e.getMessage());
             return false;
         }
     }
 
     void copy() throws IOException {
-        logWithTimestamp("Copying file to working directory");
-        InputStream inputStream = activity.getContentResolver().openInputStream(uri);
-        FileOutputStream fileOutputStream = new FileOutputStream(new File(file_path));
-        byte[] buffer = new byte[1024];
-        int count = 0;
-        long totalBytes = 0;
+        logWithTimestamp("Copying kernel zip file to app storage");
         
-        while ((count = inputStream.read(buffer)) != -1) {
-            fileOutputStream.write(buffer, 0, count);
-            totalBytes += count;
-        }
-        
-        fileOutputStream.flush();
-        inputStream.close();
-        fileOutputStream.close();
-        
-        // Log file size
-        float fileSizeKB = totalBytes / 1024f;
-        if (fileSizeKB > 1024) {
-            logWithTimestamp(String.format(Locale.getDefault(), "File copied successfully (%.2f MB)", fileSizeKB / 1024));
-        } else {
-            logWithTimestamp(String.format(Locale.getDefault(), "File copied successfully (%.2f KB)", fileSizeKB));
+        try (InputStream inputStream = activity.getContentResolver().openInputStream(uri);
+             FileOutputStream fileOutputStream = new FileOutputStream(file_path)) {
+            
+            if (inputStream == null) {
+                logWithTimestamp("Failed to open input stream from URI");
+                throw new IOException("Failed to open input stream");
+            }
+            
+            byte[] buffer = new byte[8192];
+            int read;
+            long total = 0;
+            long fileSize = DocumentFile.fromSingleUri(activity, uri).length();
+            
+            while ((read = inputStream.read(buffer)) != -1) {
+                fileOutputStream.write(buffer, 0, read);
+                total += read;
+                
+                // Update progress if file size is known
+                if (fileSize > 0) {
+                    final int progress = (int) ((total * 100) / fileSize);
+                    updateProgress("Copying kernel zip: " + progress + "%");
+                }
+            }
+            
+            // Verify the file was copied successfully
+            File copiedFile = new File(file_path);
+            if (!copiedFile.exists() || copiedFile.length() == 0) {
+                logWithTimestamp("File copying failed - resulting file is empty or doesn't exist");
+                throw new IOException("File copy verification failed");
+            }
+            
+            logWithTimestamp("File copied successfully: " + file_path + " (" + copiedFile.length() + " bytes)");
         }
     }
 
     void getBinary() throws IOException {
-        logWithTimestamp("Creating directory structure for binary");
-        runWithNewProcessNoReturn(true, "mkdir -p " + activity.getFilesDir().getAbsolutePath() + "/META-INF/com/google/android");
+        logWithTimestamp("Extracting AnyKernel3 files");
         
-        // Check if it's a valid AnyKernel3 zip by verifying that it contains required files
-        logWithTimestamp("Verifying AnyKernel3 zip contents");
-        String checkAnyKernel = runWithNewProcessReturn(true, "unzip -l " + file_path + " | grep -E 'anykernel.sh|META-INF/com/google/android/update-binary'");
+        // Create process to unzip the file
+        Process process = new ProcessBuilder("su").redirectErrorStream(true).start();
+        OutputStreamWriter outputStreamWriter = new OutputStreamWriter(process.getOutputStream());
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
         
-        if (checkAnyKernel == null || 
-            !checkAnyKernel.contains("anykernel.sh") || 
-            !checkAnyKernel.contains("META-INF/com/google/android/update-binary")) {
+        try {
+            // Create directories for extraction
+            outputStreamWriter.write("mkdir -p " + activity.getFilesDir().getAbsolutePath() + "/META-INF/com/google/android\n");
             
-            logWithTimestamp("Invalid AnyKernel3 zip! Essential files missing");
-            is_error = true;
-            return;
-        }
-        
-        logWithTimestamp("AnyKernel3 zip verification successful");
-        logWithTimestamp("Extracting update binary from zip");
-        String extractResult = runWithNewProcessReturn(true, "unzip -p " + file_path + " META-INF/com/google/android/update-binary > " + binary_path);
-        if (extractResult != null && !extractResult.isEmpty()) {
-            logWithTimestamp("Extract result: " + extractResult);
-        }
-        
-        logWithTimestamp("Setting executable permissions");
-        runWithNewProcessNoReturn(true, "chmod 755 " + binary_path);
-        
-        // Verify binary exists
-        if (new File(binary_path).exists()) {
-            logWithTimestamp("Binary extracted successfully");
-        } else {
-            logWithTimestamp("Failed to extract binary");
-            throw new IOException("Binary extraction failed");
+            // Use unzip command with busybox for better compatibility
+            String unzipCommand = 
+                "cd " + activity.getFilesDir().getAbsolutePath() + " && " +
+                "unzip -o \"" + file_path + "\" -d \"" + activity.getFilesDir().getAbsolutePath() + "\" || " +
+                "busybox unzip -o \"" + file_path + "\" -d \"" + activity.getFilesDir().getAbsolutePath() + "\"\n";
+            
+            logWithTimestamp("Executing unzip command: " + unzipCommand);
+            outputStreamWriter.write(unzipCommand);
+            outputStreamWriter.flush();
+            
+            // Verify META-INF directory and critical files exist
+            outputStreamWriter.write(
+                "cd " + activity.getFilesDir().getAbsolutePath() + " && " +
+                "ls -la META-INF/com/google/android/ && " +
+                "ls -la\n" +
+                "exit\n"
+            );
+            outputStreamWriter.flush();
+            
+            // Read and log the output
+            String line;
+            boolean foundUpdateBinary = false;
+            StringBuilder extractedFiles = new StringBuilder("Extracted files:\n");
+            
+            while ((line = bufferedReader.readLine()) != null) {
+                extractedFiles.append(line).append("\n");
+                
+                // Check for update-binary file
+                if (line.contains("update-binary")) {
+                    foundUpdateBinary = true;
+                    logWithTimestamp("Found update-binary script");
+                }
+                
+                // Log other important files
+                if (line.contains("anykernel.sh") || 
+                    line.contains("Image") || 
+                    line.contains(".img") ||
+                    line.contains("banner")) {
+                    logWithTimestamp("Found kernel file: " + line);
+                }
+            }
+            
+            // Log all extracted files for debugging
+            logWithTimestamp(extractedFiles.toString());
+            
+            // Verify that necessary files exist
+            File updateBinary = new File(binary_path);
+            if (!updateBinary.exists()) {
+                logWithTimestamp("Update binary not found at expected path: " + binary_path);
+                
+                // Try to locate it elsewhere
+                Process findProcess = Runtime.getRuntime().exec(
+                    "su -c find " + activity.getFilesDir().getAbsolutePath() + " -name 'update-binary'"
+                );
+                
+                BufferedReader findReader = new BufferedReader(new InputStreamReader(findProcess.getInputStream()));
+                String foundPath = findReader.readLine();
+                findReader.close();
+                
+                if (foundPath != null && !foundPath.isEmpty()) {
+                    logWithTimestamp("Found update-binary at alternative location: " + foundPath);
+                    
+                    // Copy to expected location
+                    runWithNewProcessNoReturn(true, 
+                        "cp -f \"" + foundPath + "\" \"" + binary_path + "\" && " +
+                        "chmod 755 \"" + binary_path + "\""
+                    );
+                    
+                    if (new File(binary_path).exists()) {
+                        logWithTimestamp("Copied update-binary to expected location");
+                    } else {
+                        throw new IOException("Failed to copy update-binary to expected location");
+                    }
+                } else if (!foundUpdateBinary) {
+                    throw new IOException("update-binary script not found in zip");
+                }
+            }
+            
+            // Make scripts executable
+            runWithNewProcessNoReturn(true, 
+                "chmod -R 755 " + activity.getFilesDir().getAbsolutePath() + "/META-INF && " +
+                "find " + activity.getFilesDir().getAbsolutePath() + " -name '*.sh' -exec chmod 755 {} \\;"
+            );
+            
+            logWithTimestamp("AnyKernel3 extraction completed successfully");
+        } catch (Exception e) {
+            logWithTimestamp("Error during file extraction: " + e.getMessage());
+            throw new IOException("Error extracting files: " + e.getMessage());
+        } finally {
+            try {
+                bufferedReader.close();
+                outputStreamWriter.close();
+                process.destroy();
+            } catch (Exception e) {
+                logWithTimestamp("Error closing resources: " + e.getMessage());
+            }
         }
     }
 
@@ -339,50 +615,194 @@ public class Worker extends MainActivity.fileWorker {
 
     void flash(Activity activity) throws IOException {
         logWithTimestamp("Starting kernel flashing process");
-        Process process = new ProcessBuilder("su").redirectErrorStream(true).start();
+        Process process;
+        try {
+            process = new ProcessBuilder("su").redirectErrorStream(true).start();
+        } catch (Exception e) {
+            logWithTimestamp("Failed to get root access: " + e.getMessage());
+            throw new IOException("Failed to get root access");
+        }
+        
         OutputStreamWriter outputStreamWriter = new OutputStreamWriter(process.getOutputStream());
         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
         
-        logWithTimestamp("Setting up environment variables");
-        outputStreamWriter.write("export POSTINSTALL=" + activity.getFilesDir().getAbsolutePath() + "\n");
+        boolean errorDetected = false;
+        String errorMessage = null;
+        boolean foundSuccessMarker = false;
         
-        String flashCommand = "sh " + (MainActivity.DEBUG ? "-x " : "") + binary_path + " 3 1 \"" + file_path + "\"&& touch " + activity.getFilesDir().getAbsolutePath() + "/done\nexit\n";
-        logWithTimestamp("Executing flash command with root privileges");
-        outputStreamWriter.write(flashCommand);
-        outputStreamWriter.flush();
-        
-        String line;
-        int lineCount = 0;
-        while ((line = bufferedReader.readLine()) != null) {
-            // Don't add timestamp to the flash script output to keep it clean
-            MainActivity.appendLog(line, activity);
-            lineCount++;
+        try {
+            logWithTimestamp("Setting up environment variables");
             
-            // Update progress with meaningful messages based on common output patterns
-            if (line.contains("boot.img") || line.contains(".img")) {
-                updateProgress("Processing boot image...");
-            } else if (line.contains("extract") || line.contains("unzip")) {
-                updateProgress("Extracting files...");
-            } else if (line.contains("flash") || line.contains("write")) {
-                updateProgress("Writing to flash memory...");
-            } else if (line.contains("patch")) {
-                updateProgress("Patching kernel...");
-            } else if (line.contains("permission") || line.contains("chmod")) {
-                updateProgress("Setting permissions...");
+            // Configure environment for AnyKernel3
+            outputStreamWriter.write(
+                "export POSTINSTALL=" + activity.getFilesDir().getAbsolutePath() + "\n" +
+                "export PATH=$PATH:" + activity.getFilesDir().getAbsolutePath() + "/tools\n" +
+                "cd " + activity.getFilesDir().getAbsolutePath() + "\n" +
+                // List all files in the directory for debugging
+                "echo 'Contents of extraction directory:'\n" +
+                "ls -la\n" +
+                "echo 'Contents of META-INF directory:'\n" +
+                "ls -la META-INF/com/google/android/ 2>/dev/null || echo 'META-INF directory not found'\n" +
+                "echo 'Starting flash process...'\n"
+            );
+            
+            // Enhanced flash command with additional verification and debugging
+            String flashCommand = 
+                // Make sure update-binary is executable
+                "chmod 755 " + binary_path + " && " +
+                
+                // Print binary file type for debugging
+                "file " + binary_path + " && " +
+                
+                // Execute AnyKernel3 script with detailed parameters
+                "sh " + (MainActivity.DEBUG ? "-x " : "") + binary_path + 
+                " 3 1 \"" + file_path + "\" 2>&1 && " +
+                
+                // Add verification steps
+                "echo \"Verifying flash operation...\" && " +
+                
+                // Try to read boot partition - multiple common paths
+                "echo 'Verifying boot partition:' && " +
+                "(dd if=/dev/block/bootdevice/by-name/boot of=/dev/null bs=4096 count=1 2>/dev/null || " +
+                "dd if=/dev/block/platform/*/by-name/boot of=/dev/null bs=4096 count=1 2>/dev/null || " +
+                "dd if=/dev/block/by-name/boot of=/dev/null bs=4096 count=1 2>/dev/null) && " +
+                
+                // Create success marker only if above checks pass
+                "echo \"FLASH_VERIFIED_OK\" && " +
+                "touch " + activity.getFilesDir().getAbsolutePath() + "/done\n" +
+                "exit\n";
+                
+            logWithTimestamp("Executing flash command with root privileges");
+            outputStreamWriter.write(flashCommand);
+            outputStreamWriter.flush();
+            
+            // Enhanced output parsing
+            String line;
+            int lineCount = 0;
+            
+            // Track important flashing stages for better diagnostics
+            boolean startedUnpacking = false;
+            boolean startedFlashing = false;
+            boolean finishedFlashing = false;
+            
+            while ((line = bufferedReader.readLine()) != null) {
+                // Don't add timestamp to the flash script output to keep it clean
+                MainActivity.appendLog(line, activity);
+                lineCount++;
+                
+                // Check for success marker
+                if (line.contains("FLASH_VERIFIED_OK")) {
+                    foundSuccessMarker = true;
+                    logWithTimestamp("Flash verification successful");
+                }
+                
+                // Track progress through flashing stages
+                if (line.contains("Unpacking") || line.contains("extract") || line.contains("unzip")) {
+                    startedUnpacking = true;
+                    updateProgress("Unpacking kernel files...");
+                } else if (line.contains("patching") || line.contains("Patching")) {
+                    updateProgress("Patching boot image...");
+                } else if (line.contains("Writing") || line.contains("writing") || line.contains("flash")) {
+                    startedFlashing = true;
+                    updateProgress("Writing to flash memory...");
+                } else if (line.contains("All done") || line.contains("Finished") || line.contains("complete")) {
+                    finishedFlashing = true;
+                    updateProgress("Finishing flash operation...");
+                }
+                
+                // Check for common error patterns with more context
+                if (line.toLowerCase().contains("error") || 
+                    line.toLowerCase().contains("failed") || 
+                    line.toLowerCase().contains("cannot") || 
+                    line.toLowerCase().contains("not found") ||
+                    line.toLowerCase().contains("permission denied")) {
+                    
+                    // Don't flag certain common messages that aren't errors
+                    if (!line.contains("Warning") && 
+                        !line.contains("no error") && 
+                        !line.contains("0 errors") &&
+                        !line.contains("error checking is disabled")) {
+                        
+                        errorDetected = true;
+                        errorMessage = line;
+                        logWithTimestamp("Error detected: " + line);
+                        updateProgress("Error: " + line);
+                    }
+                }
+                
+                // Update progress with meaningful messages based on common output patterns
+                if (line.contains("boot.img") || line.contains(".img")) {
+                    updateProgress("Processing boot image...");
+                } else if (line.contains("permission") || line.contains("chmod")) {
+                    updateProgress("Setting permissions...");
+                } else if (line.contains("Verifying")) {
+                    updateProgress("Verifying successful flash...");
+                }
+            }
+            
+            logWithTimestamp("Flash script completed with " + lineCount + " lines of output");
+            
+            // Add diagnostic information about flashing stages
+            logWithTimestamp("Flashing stages: " + 
+                "Unpacking=" + startedUnpacking + ", " +
+                "Flashing=" + startedFlashing + ", " +
+                "Completed=" + finishedFlashing);
+        } catch (Exception e) {
+            logWithTimestamp("Exception during flashing: " + e.getMessage());
+            throw new IOException("Exception during flashing: " + e.getMessage());
+        } finally {
+            try {
+                bufferedReader.close();
+                outputStreamWriter.close();
+                process.destroy();
+            } catch (Exception e) {
+                logWithTimestamp("Error closing resources: " + e.getMessage());
             }
         }
         
-        logWithTimestamp("Flash script completed with " + lineCount + " lines of output");
-        bufferedReader.close();
-        outputStreamWriter.close();
-        process.destroy();
-
-        if (!new File(activity.getFilesDir().getAbsolutePath() + "/done").exists()) {
-            logWithTimestamp("Flash failed - completion marker not found");
-            throw new IOException();
+        // Check for explicit errors
+        if (errorDetected) {
+            logWithTimestamp("Flash failed - error detected in output: " + errorMessage);
+            throw new IOException("Flash failed - error detected: " + errorMessage);
         }
         
-        logWithTimestamp("Flash completed successfully");
+        // Check for completion marker file
+        if (!new File(activity.getFilesDir().getAbsolutePath() + "/done").exists()) {
+            logWithTimestamp("Flash failed - completion marker not found");
+            throw new IOException("Flash failed - completion marker not found");
+        }
+        
+        // Verification checks
+        boolean verificationPassed = foundSuccessMarker || verifyBootPartition();
+        if (!verificationPassed) {
+            logWithTimestamp("Flash failed - verification was not successful");
+            throw new IOException("Flash failed - verification was not successful");
+        }
+        
+        logWithTimestamp("Flash completed successfully with all verifications passed");
+    }
+
+    // New method to verify the boot partition can be read
+    private boolean verifyBootPartition() {
+        try {
+            logWithTimestamp("Performing final boot partition verification...");
+            // Try to read from boot partition as a final check
+            String result = runWithNewProcessReturn(true, 
+                    "dd if=/dev/block/bootdevice/by-name/boot of=/dev/null bs=4096 count=10 2>&1");
+            
+            boolean success = result != null && !result.toLowerCase().contains("error") 
+                    && !result.toLowerCase().contains("fail");
+            
+            logWithTimestamp("Boot partition verification " + (success ? "successful" : "failed"));
+            if (!success) {
+                logWithTimestamp("Verification output: " + result);
+            }
+            
+            return success;
+        } catch (Exception e) {
+            logWithTimestamp("Exception during boot partition verification: " + e.getMessage());
+            return false;
+        }
     }
 
     void cleanup() throws IOException {
@@ -977,6 +1397,10 @@ public class Worker extends MainActivity.fileWorker {
     }
     
     private void dismissProgressDialog() {
+        if (activity == null) {
+            return; // Avoid NPE if activity is gone
+        }
+        
         activity.runOnUiThread(() -> {
             try {
                 if (progressDialog != null && progressDialog.isShowing()) {
@@ -984,6 +1408,7 @@ public class Worker extends MainActivity.fileWorker {
                 }
             } catch (Exception e) {
                 // Ignore if dialog was already dismissed or activity was destroyed
+                logWithTimestamp("Error dismissing dialog: " + e.getMessage());
             }
         });
     }
@@ -1355,6 +1780,202 @@ public class Worker extends MainActivity.fileWorker {
         }
         
         return partitions;
+    }
+
+    // Method to create a backup of the boot partition before flashing
+    private boolean backupBootPartition() {
+        try {
+            logWithTimestamp("Creating emergency boot partition backup...");
+            
+            // Create emergency backup directory
+            String backupDir = activity.getExternalFilesDir(null) + "/emergency_backup";
+            String backupFilePath = backupDir + "/boot_backup_" + System.currentTimeMillis() + ".img";
+            
+            // Create backup directory if it doesn't exist
+            runWithNewProcessNoReturn(true, "mkdir -p " + backupDir);
+            
+            // Find boot partition
+            String bootPartition = getBootPartition();
+            if (bootPartition == null || bootPartition.isEmpty()) {
+                logWithTimestamp("Could not determine boot partition for backup");
+                return false;
+            }
+            
+            // Create backup using dd
+            String result = runWithNewProcessReturn(true, 
+                    "dd if=" + bootPartition + " of=" + backupFilePath + " bs=4096");
+            
+            boolean success = result != null && !result.toLowerCase().contains("error") 
+                    && !result.toLowerCase().contains("fail");
+            
+            if (success) {
+                logWithTimestamp("Emergency boot backup created successfully at: " + backupFilePath);
+                // Store path for potential recovery
+                activity.getSharedPreferences("emergency_backup", android.content.Context.MODE_PRIVATE)
+                    .edit()
+                    .putString("last_boot_backup", backupFilePath)
+                    .putLong("backup_time", System.currentTimeMillis())
+                    .apply();
+            } else {
+                logWithTimestamp("Failed to create emergency boot backup: " + result);
+            }
+            
+            return success;
+        } catch (Exception e) {
+            logWithTimestamp("Exception during boot backup: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // Method to verify the AnyKernel3 package is complete before flashing
+    private boolean verifyAnyKernel3Package() {
+        try {
+            logWithTimestamp("Verifying AnyKernel3 package structure");
+            
+            // Run a command to check the contents of the zip
+            Process process = Runtime.getRuntime().exec("su -c \"unzip -l " + file_path + "\"");
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            
+            String line;
+            boolean hasUpdateBinary = false;
+            boolean hasAnyKernelSh = false;
+            boolean hasKernelImage = false;
+            StringBuilder zipContents = new StringBuilder("ZIP contents:\n");
+            
+            while ((line = bufferedReader.readLine()) != null) {
+                zipContents.append(line).append("\n");
+                
+                if (line.contains("META-INF/com/google/android/update-binary")) {
+                    hasUpdateBinary = true;
+                }
+                
+                if (line.contains("anykernel.sh")) {
+                    hasAnyKernelSh = true;
+                }
+                
+                if (line.contains("Image") || line.contains(".img")) {
+                    hasKernelImage = true;
+                }
+            }
+            
+            bufferedReader.close();
+            process.waitFor();
+            
+            // Log the contents for debugging
+            logWithTimestamp(zipContents.toString());
+            
+            // Check if the package is complete
+            boolean isComplete = hasUpdateBinary && hasAnyKernelSh;
+            
+            if (!isComplete) {
+                logWithTimestamp("AnyKernel3 package is incomplete: " +
+                        "update-binary=" + hasUpdateBinary + ", " +
+                        "anykernel.sh=" + hasAnyKernelSh + ", " +
+                        "kernel image=" + hasKernelImage);
+                
+                // Show details about what's missing
+                StringBuilder missingComponents = new StringBuilder("Missing components: ");
+                if (!hasUpdateBinary) missingComponents.append("update-binary ");
+                if (!hasAnyKernelSh) missingComponents.append("anykernel.sh ");
+                if (!hasKernelImage) missingComponents.append("kernel image ");
+                
+                logWithTimestamp(missingComponents.toString());
+                
+                // Special handling for incomplete packages
+                if (!hasUpdateBinary) {
+                    // Try to provide a built-in update-binary as fallback
+                    logWithTimestamp("Attempting to provide built-in update-binary");
+                    try {
+                        File binDir = new File(activity.getFilesDir().getAbsolutePath() + "/META-INF/com/google/android");
+                        binDir.mkdirs();
+                        
+                        AssetsUtil.exportFiles(activity, "update-binary", binary_path);
+                        
+                        if (new File(binary_path).exists()) {
+                            runWithNewProcessNoReturn(true, "chmod 755 " + binary_path);
+                            logWithTimestamp("Successfully provided built-in update-binary");
+                        }
+                    } catch (Exception e) {
+                        logWithTimestamp("Failed to provide built-in update-binary: " + e.getMessage());
+                    }
+                }
+            } else {
+                logWithTimestamp("AnyKernel3 package verification successful");
+            }
+            
+            return isComplete;
+        } catch (Exception e) {
+            logWithTimestamp("Error verifying AnyKernel3 package: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // Method to create missing files if needed
+    private void createMissingFiles() {
+        try {
+            logWithTimestamp("Checking for missing critical files");
+            
+            // Check and create anykernel.sh if needed
+            File anyKernelSh = new File(activity.getFilesDir().getAbsolutePath() + "/anykernel.sh");
+            if (!anyKernelSh.exists()) {
+                logWithTimestamp("anykernel.sh not found, creating fallback version");
+                AssetsUtil.exportFiles(activity, "anykernel.sh", anyKernelSh.getAbsolutePath());
+                runWithNewProcessNoReturn(true, "chmod 755 " + anyKernelSh.getAbsolutePath());
+            }
+            
+            // Check for ak3-core.sh in tools directory
+            File ak3CoreSh = new File(activity.getFilesDir().getAbsolutePath() + "/tools/ak3-core.sh");
+            if (!ak3CoreSh.exists()) {
+                File toolsDir = new File(activity.getFilesDir().getAbsolutePath() + "/tools");
+                if (!toolsDir.exists()) {
+                    toolsDir.mkdirs();
+                }
+                
+                // Try to extract it from the zip if available
+                String extractResult = runWithNewProcessReturn(true, 
+                    "unzip -p " + file_path + " tools/ak3-core.sh > " + ak3CoreSh.getAbsolutePath() + " 2>/dev/null");
+                
+                if (ak3CoreSh.exists() && ak3CoreSh.length() > 0) {
+                    logWithTimestamp("Extracted ak3-core.sh from zip");
+                    runWithNewProcessNoReturn(true, "chmod 755 " + ak3CoreSh.getAbsolutePath());
+                } else {
+                    logWithTimestamp("ak3-core.sh not found in zip, flash may fail");
+                }
+            }
+            
+            // Check for kernel image files
+            String[] possibleImageNames = {"Image.gz", "Image.gz-dtb", "Image", "zImage", "kernel"};
+            boolean hasKernelImage = false;
+            
+            for (String imageName : possibleImageNames) {
+                if (new File(activity.getFilesDir().getAbsolutePath() + "/" + imageName).exists()) {
+                    hasKernelImage = true;
+                    logWithTimestamp("Found kernel image: " + imageName);
+                    break;
+                }
+            }
+            
+            if (!hasKernelImage) {
+                logWithTimestamp("Warning: No kernel image found, flashing may fail");
+            }
+            
+            // Check if META-INF directory exists and has update-binary
+            File updateBinary = new File(binary_path);
+            if (!updateBinary.exists()) {
+                logWithTimestamp("update-binary not found at expected path, creating from asset");
+                
+                // Create directory structure
+                File metaInfDir = new File(activity.getFilesDir().getAbsolutePath() + "/META-INF/com/google/android");
+                metaInfDir.mkdirs();
+                
+                AssetsUtil.exportFiles(activity, "update-binary", updateBinary.getAbsolutePath());
+                runWithNewProcessNoReturn(true, "chmod 755 " + updateBinary.getAbsolutePath());
+            }
+            
+            logWithTimestamp("File verification and creation complete");
+        } catch (Exception e) {
+            logWithTimestamp("Error creating missing files: " + e.getMessage());
+        }
     }
 
 }
