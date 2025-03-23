@@ -2,12 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" 
-        tools:ignore="ScopedStorage" />
-
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -17,14 +11,20 @@
         android:enableOnBackInvokedCallback="true"
         tools:targetApi="31">
         <activity
-            android:name="xzr.hkf.MainActivity"
+            android:name="xzr.hkf.WelcomeActivity"
             android:screenOrientation="portrait"
             android:exported="true"
-            android:windowSoftInputMode="adjustResize">
+            android:theme="@style/Theme.HorizonKernelFlasher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+        <activity
+            android:name="xzr.hkf.MainActivity"
+            android:screenOrientation="portrait"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize">
         </activity>
     </application>
 

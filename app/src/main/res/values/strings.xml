@@ -24,65 +24,28 @@
     <string name="unable_flash_error">An error occurred while flashing</string>
     <string name="log_timestamp">[%1$s] %2$s</string>
     <string name="success_screen_title">Flashing Completed!</string>
-    <string name="invalid_zip_file">Invalid file! Only AnyKernel3 ZIP files are supported.</string>
-    <string name="create_backup">Create Backup</string>
-    <string name="restore_backup">Restore Kernel Backup</string>
-    <string name="manage_backups">Manage Backups</string>
-    <string name="backup_warning">Failed to create backup. Continue anyway?</string>
-    <string name="no_backups">No backups available</string>
-    <string name="restore_confirm">Are you sure you want to restore the most recent backup?</string>
-    <string name="backup_success">Backup created successfully</string>
-    <string name="restore_success">Backup restored successfully</string>
-    <string name="restore_failed">Failed to restore backup</string>
-    <string name="backup_details">Backup Details</string>
-    <string name="delete_backup">Delete Backup</string>
-    <string name="delete_all_backups">Delete All Backups</string>
-    <string name="confirm_delete">Are you sure you want to delete this backup?</string>
-    <string name="confirm_delete_all">Are you sure you want to delete all backups?</string>
-    <string name="backup_selection_title">Select partitions to backup</string>
-    <string name="backup_location_header">Backup Location</string>
-    <string name="backup_external_storage">External Storage (sdcard/HorizonRevamped)</string>
-    <string name="backup_internal_storage">App Internal Storage</string>
-    <string name="backup_complete">Backup completed successfully</string>
-    <string name="backup_error">Error creating backup</string>
-    <string name="backup_partial_error">Some partitions could not be backed up</string>
-    <string name="backup_progress">Creating backup...</string>
-    <string name="create_backup_folder_error">Failed to create backup folder</string>
-    <string name="storage_permission_required">Storage permission required for external backup</string>
-    <string name="unable_process_ongoing">Cannot create backup while a process is ongoing</string>
-    <string name="restore_selection_title">Select partitions to restore</string>
-    <string name="no_partition_backups">No partition backups found</string>
-    <string name="select_backup_folder">Select a backup folder</string>
-    <string name="restoring">Restoring partitions...</string>
-    <string name="restore_complete">Restore completed successfully</string>
-    <string name="restore_partial_error">Some partitions could not be restored</string>
-    <string name="browse_backups">Browse Backup Folders</string>
-    <string name="select_backup_source">Select Backup Source</string>
-    <string name="internal_backups">App Internal Backups</string>
-    <string name="external_backups">External Storage Backups</string>
-    <string name="backup_storage_location">Backups will be saved to: sdcard/HorizonRevamped/backups/</string>
-    <string name="scanning_backups">Scanning for backups…</string>
-    <string name="loading_backup_details">Loading backup details…</string>
-    <string name="no_backups_found">No backups found</string>
+    
+    <!-- Welcome screens -->
+    <string name="next">Next</string>
+    <string name="get_started">Get Started</string>
+    <string name="storage_permission_required">Storage access is required for kernel flashing</string>
+    
+    <string name="welcome_title_1">Welcome to Horizon Revamped</string>
+    <string name="welcome_desc_1">Horizon is a powerful kernel flashing tool that helps you customize your device with ease and reliability.</string>
+    
+    <string name="welcome_title_2">Storage Access</string>
+    <string name="welcome_desc_2">We need storage permissions to read kernel files and perform the flashing process. Please grant these permissions on the next steps.</string>
+    
+    <string name="welcome_title_3">Root Access</string>
+    <string name="welcome_desc_3">For kernel flashing to work properly, your device needs to be rooted. Please grant root access when prompted.</string>
+    
+    <!-- Backup related strings -->
     <string name="backup_summary_header">Backup Summary</string>
-    <string name="backup_partitions_header">Partitions</string>
-    <string name="restore_confirmation">Restore Confirmation</string>
-    <string name="restore_confirmation_message">Are you sure you want to restore the selected partitions?</string>
-    <string name="restore">Restore</string>
-    <string name="no_partitions_selected">No partitions selected</string>
-    <string name="delete_backup_confirmation_title">Delete Backup?</string>
-    <string name="delete_backup_confirmation_message">Are you sure you want to delete the backup folder \"%1$s\"? This action cannot be undone.</string>
-    <string name="deleting_backup">Deleting backup…</string>
-    <string name="backup_deleted">Backup deleted successfully</string>
-    <string name="backup_delete_failed">Failed to delete backup folder</string>
-    <string name="delete">Delete</string>
-    <string name="cancel">Cancel</string>
-    <string name="backup_details_title">Backup Details</string>
-    <string name="restore_confirmation_title">Restore Confirmation</string>
-    <string name="delete_backup_title">Delete Backup</string>
-    <string name="delete_backup_confirmation">Are you sure you want to delete %s?</string>
-    <string name="no_backup_details">Failed to load backup details</string>
-    <string name="error_showing_backup_details">Error showing backup details</string>
-    <string name="no_backup_images">No backup images found</string>
-    <string name="grant">Grant</string>
+    <string name="backup_partitions_header">Backup Partitions</string>
+    <string name="no_backups">No backups available</string>
+    <string name="delete_all_backups">Delete All Backups</string>
+    <string name="backup_selection_title">Select Backup Options</string>
+    <string name="backup_storage_location">Backup Storage Location</string>
+    <string name="restore_backup">Restore</string>
+    <string name="delete_backup">Delete</string>
 </resources>

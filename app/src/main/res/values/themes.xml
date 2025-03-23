@@ -1,49 +1,35 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Theme.HorizonKernelFlasher" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="Theme.HorizonKernelFlasher" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/md_theme_dark_primary</item>
-        <item name="colorOnPrimary">@color/md_theme_dark_onPrimary</item>
-        <item name="colorPrimaryContainer">@color/md_theme_dark_primaryContainer</item>
-        <item name="colorOnPrimaryContainer">@color/md_theme_dark_onPrimaryContainer</item>
+        <item name="colorPrimary">@color/md_theme_light_primary</item>
+        <item name="colorOnPrimary">@color/md_theme_light_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/md_theme_light_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/md_theme_light_onPrimaryContainer</item>
         
         <!-- Secondary brand color. -->
-        <item name="colorSecondary">@color/md_theme_dark_secondary</item>
-        <item name="colorOnSecondary">@color/md_theme_dark_onSecondary</item>
-        <item name="colorSecondaryContainer">@color/md_theme_dark_secondaryContainer</item>
-        <item name="colorOnSecondaryContainer">@color/md_theme_dark_onSecondaryContainer</item>
+        <item name="colorSecondary">@color/md_theme_light_secondary</item>
+        <item name="colorOnSecondary">@color/md_theme_light_onSecondary</item>
+        <item name="colorSecondaryContainer">@color/md_theme_light_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/md_theme_light_onSecondaryContainer</item>
         
         <!-- Tertiary brand color. -->
-        <item name="colorTertiary">@color/md_theme_dark_tertiary</item>
-        <item name="colorOnTertiary">@color/md_theme_dark_onTertiary</item>
-        <item name="colorTertiaryContainer">@color/md_theme_dark_tertiaryContainer</item>
-        <item name="colorOnTertiaryContainer">@color/md_theme_dark_onTertiaryContainer</item>
-        
-        <!-- Background and surface colors -->
-        <item name="android:colorBackground">@color/md_theme_dark_background</item>
-        <item name="colorSurface">@color/md_theme_dark_surface</item>
-        <item name="colorOnSurface">@color/md_theme_dark_onSurface</item>
-        <item name="colorSurfaceVariant">@color/md_theme_dark_surfaceVariant</item>
-        <item name="colorOnSurfaceVariant">@color/md_theme_dark_onSurfaceVariant</item>
-        
-        <!-- Error colors -->
-        <item name="colorError">@color/md_theme_dark_error</item>
-        <item name="colorErrorContainer">@color/md_theme_dark_errorContainer</item>
-        <item name="colorOnError">@color/md_theme_dark_onError</item>
-        <item name="colorOnErrorContainer">@color/md_theme_dark_onErrorContainer</item>
+        <item name="colorTertiary">@color/md_theme_light_tertiary</item>
+        <item name="colorOnTertiary">@color/md_theme_light_onTertiary</item>
+        <item name="colorTertiaryContainer">@color/md_theme_light_tertiaryContainer</item>
+        <item name="colorOnTertiaryContainer">@color/md_theme_light_onTertiaryContainer</item>
         
         <!-- Status bar color. -->
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
         
         <!-- Enable window content transitions -->
         <item name="android:windowActivityTransitions">true</item>
-        <item name="android:windowAllowEnterTransitionOverlap">true</item>
-        <item name="android:windowAllowReturnTransitionOverlap">true</item>
+        <item name="android:windowEnterTransition">@android:transition/explode</item>
+        <item name="android:windowExitTransition">@android:transition/explode</item>
         
-        <!-- Splash screen settings -->
+        <!-- Enable dynamic colors on Android 12+ -->
         <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@mipmap/ic_launcher</item>
-        <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/md_theme_dark_background</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/md_theme_light_background</item>
     </style>
-</resources> 
+</resources>

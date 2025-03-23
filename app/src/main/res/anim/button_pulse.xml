@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:ordering="sequentially">
+    <set android:ordering="together">
+        <objectAnimator
+            android:duration="150"
+            android:propertyName="scaleX"
+            android:valueFrom="1.0"
+            android:valueTo="0.9"
+            android:valueType="floatType"
+            android:interpolator="@android:interpolator/accelerate_cubic" />
+        <objectAnimator
+            android:duration="150"
+            android:propertyName="scaleY"
+            android:valueFrom="1.0"
+            android:valueTo="0.9"
+            android:valueType="floatType"
+            android:interpolator="@android:interpolator/accelerate_cubic" />
+    </set>
+    <set android:ordering="together">
+        <objectAnimator
+            android:duration="250"
+            android:propertyName="scaleX"
+            android:valueFrom="0.9"
+            android:valueTo="1.0"
+            android:valueType="floatType"
+            android:interpolator="@android:interpolator/overshoot" />
+        <objectAnimator
+            android:duration="250"
+            android:propertyName="scaleY"
+            android:valueFrom="0.9"
+            android:valueTo="1.0"
+            android:valueType="floatType"
+            android:interpolator="@android:interpolator/overshoot" />
+    </set>
+</set> 
